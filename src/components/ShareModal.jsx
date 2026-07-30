@@ -27,53 +27,6 @@ export default function ShareModal({ type, targetId, targetTitle, inviterName, o
         setFetching(false)
     }
 
-    const sendInviteEmail = async (recipientEmail) => {
-        const apiKey = import.meta.env.VITE_RESEND_API_KEY
-        if (!apiKey) {
-            console.warn('RESEND_API_KEY not found in environment.')
-            return
-        }
-
-        try {
-            const appUrl = window.location.origin;
-            // Using local vite proxy to bypass CORS for development
-            const response = await fetch('/resend-api/emails', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
-                },
-                body: JSON.stringify({
-                    from: 'C2 Action Board <onboarding@resend.dev>',
-                    to: [recipientEmail],
-                    subject: `Invite: You've been given access to ${targetTitle}`,
-                    html: `
-                        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px;">
-                            <h2 style="color: #d97706;">Collaboration Invite</h2>
-                            <p>Hello,</p>
-                            <p><strong>${inviterName || 'A colleague'}</strong> has invited you to access the <strong>${type}</strong>: "${targetTitle}" with the role of <strong>${role}</strong>.</p>
-                            <div style="margin: 25px 0;">
-                                <a href="${appUrl}" style="background-color: #d97706; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">View Action Board</a>
-                            </div>
-                            <p style="font-size: 14px; color: #6b7280;">If the button doesn't work, copy and paste this link: <br/> <a href="${appUrl}" style="color: #d97706;">${appUrl}</a></p>
-                            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
-                            <p style="font-size: 12px; color: #6b7280;">This is an automated message from C2 Action Board.</p>
-                        </div>
-                    `
-                })
-            })
-
-            const result = await response.json()
-            if (!response.ok) {
-                console.error('Email failed:', result)
-            } else {
-                console.log('Email sent successfully:', result)
-            }
-        } catch (error) {
-            console.error('Error sending email:', error)
-        }
-    }
-
     const handleShare = async (e) => {
         e.preventDefault()
         setLoading(true)
@@ -89,8 +42,6 @@ export default function ShareModal({ type, targetId, targetTitle, inviterName, o
         if (error) {
             alert(error.message)
         } else {
-            // Trigger email send
-            await sendInviteEmail(normalizedEmail)
             setEmail('')
             fetchShares()
         }
