@@ -171,42 +171,161 @@ export default function MeetingDetail() {
 
   // PDF Export
   const exportPDF = () => {
-    const doc = new jsPDF()
-    let y = 20
-    doc.setFontSize(18); doc.setFont('helvetica', 'bold')
-    doc.text('Minutes of Meeting', 14, y); y += 8
-    doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.setTextColor(100)
-    doc.text(`Generated: ${format(new Date(), 'PPP')}`, 14, y); y += 12
-    doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(0)
-    doc.text(meeting.title, 14, y); y += 7
-    doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.setTextColor(80)
-    doc.text(`Date: ${format(parseISO(meeting.date), 'MMMM d, yyyy')}`, 14, y); y += 5
-    doc.text(`Attendees: ${meeting.attendees || 'N/A'}`, 14, y); y += 5
-    doc.text(`Venue: ${meeting.venue || 'N/A'}  |  Duration: ${meeting.duration || 'N/A'}`, 14, y); y += 8
-    doc.setFont('helvetica', 'bold'); doc.setTextColor(0)
-    doc.text('Objective:', 14, y); y += 5
-    doc.setFont('helvetica', 'normal'); doc.setTextColor(60)
-    const objLines = doc.splitTextToSize(meeting.objective || 'N/A', 182)
-    doc.text(objLines, 14, y); y += objLines.length * 5 + 5
-    doc.setFont('helvetica', 'bold'); doc.setTextColor(0)
-    doc.text('Discussion Points:', 14, y); y += 5
-    doc.setFont('helvetica', 'normal'); doc.setTextColor(60)
-    const dpLines = doc.splitTextToSize(meeting.discussion_points || 'N/A', 182)
-    doc.text(dpLines, 14, y); y += dpLines.length * 5 + 8
-    if (meeting.ai_summary) {
-      doc.setFont('helvetica', 'bold'); doc.setTextColor(0)
-      doc.text('AI Summary:', 14, y); y += 5
-      doc.setFont('helvetica', 'normal'); doc.setTextColor(60)
-      const sumLines = doc.splitTextToSize(meeting.ai_summary, 182)
-      doc.text(sumLines, 14, y); y += sumLines.length * 5 + 8
+    // Replace Unicode chars that WinAnsi Helvetica can't render (else jsPDF outputs one letter per line).
+    const sanitize = (t) => {
+      if (t == null) return ''
+      return String(t)
+        .replace(/\r\n/g, '\n')
+        .replace(/[‘’‚‛]/g, "'")
+        .replace(/[“”„‟]/g, '"')
+        .replace(/[–—−]/g, '-')
+        .replace(/…/g, '...')
+        .replace(/[•●▪▫◦‣⁃]/g, '- ')
+        .replace(/ /g, ' ')
+        .replace(/[^\x00-\x7F]/g, '')
     }
+
+    const doc = new jsPDF()
+    const pageW = doc.internal.pageSize.getWidth()
+    const pageH = doc.internal.pageSize.getHeight()
+    const marginX = 14
+    const contentW = pageW - marginX * 2
+    const bottomLimit = pageH - 18
+    let y = 0
+
+    const ensureSpace = (needed) => {
+      if (y + needed > bottomLimit) {
+        doc.addPage()
+        y = 18
+      }
+    }
+
+    const drawHeaderBanner = () => {
+      doc.setFillColor(37, 99, 235)
+      doc.rect(0, 0, pageW, 26, 'F')
+      doc.setTextColor(255, 255, 255)
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(16)
+      doc.text('Minutes of Meeting', marginX, 12)
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9)
+      doc.text(`Generated: ${format(new Date(), 'PPP')}`, marginX, 19)
+      y = 34
+    }
+
+    const writeMetaRow = (label, value) => {
+      ensureSpace(6)
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(90)
+      doc.text(label, marginX, y)
+      doc.setFont('helvetica', 'normal'); doc.setTextColor(30)
+      const lines = doc.splitTextToSize(sanitize(value) || '-', contentW - 32)
+      doc.text(lines, marginX + 32, y)
+      y += Math.max(5, lines.length * 4.5) + 1
+    }
+
+    const writeSection = (title, body) => {
+      const clean = sanitize(body).trim()
+      if (!clean) return
+      ensureSpace(14)
+      // Section header bar
+      doc.setFillColor(240, 244, 251)
+      doc.rect(marginX, y - 4, contentW, 7, 'F')
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(37, 99, 235)
+      doc.text(title.toUpperCase(), marginX + 2, y + 1)
+      y += 7
+
+      // Render line-by-line so blank lines and inline headers are preserved.
+      // ALL CAPS lines (e.g. "EXECUTIVE SUMMARY", "KEY DISCUSSIONS", "KEY DECISIONS")
+      // are rendered bold + black to stand out inside the AI Summary.
+      const isInlineHeader = (s) =>
+        s.length > 2 && s.length <= 60 && s === s.toUpperCase() && /[A-Z]/.test(s) && !/^\d+\./.test(s)
+
+      const paragraphs = clean.split('\n')
+      for (const raw of paragraphs) {
+        const line = raw.trim()
+        if (!line) { y += 3; continue }
+        if (isInlineHeader(line)) {
+          ensureSpace(8)
+          doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(0)
+          doc.text(line, marginX, y + 2)
+          y += 7
+          continue
+        }
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(45)
+        const wrapped = doc.splitTextToSize(line, contentW)
+        for (const w of wrapped) {
+          ensureSpace(5)
+          doc.text(w, marginX, y)
+          y += 5
+        }
+      }
+      y += 4
+    }
+
+    // === Build the document ===
+    drawHeaderBanner()
+
+    // Title of the meeting
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.setTextColor(20)
+    const titleLines = doc.splitTextToSize(sanitize(meeting.title), contentW)
+    doc.text(titleLines, marginX, y)
+    y += titleLines.length * 6 + 3
+
+    // Underline separator
+    doc.setDrawColor(220); doc.setLineWidth(0.3)
+    doc.line(marginX, y, pageW - marginX, y)
+    y += 6
+
+    // Meta rows
+    writeMetaRow('Client:', meeting.client_name)
+    writeMetaRow('Project:', meeting.project_name)
+    writeMetaRow('Date:', format(parseISO(meeting.date), 'MMMM d, yyyy'))
+    writeMetaRow('Venue:', meeting.venue)
+    writeMetaRow('Duration:', meeting.duration)
+    writeMetaRow('Attendees:', meeting.attendees)
+    y += 4
+
+    // Body sections
+    writeSection('Objective', meeting.objective)
+    if (meeting.ai_summary) writeSection('AI Summary', meeting.ai_summary)
+
+    // Action Items always start on a new page (page 2+)
+    doc.addPage()
+    y = 18
+    doc.setFillColor(240, 244, 251)
+    doc.rect(marginX, y - 4, contentW, 7, 'F')
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(37, 99, 235)
+    doc.text('ACTION ITEMS', marginX + 2, y + 1)
+    y += 9
+
     autoTable(doc, {
       startY: y,
+      margin: { left: marginX, right: marginX },
       head: [['Status', 'Action Item', 'Assigned To', 'Due Date']],
-      body: actions.map(a => [a.status, a.title, a.assigned_to_name || '-', a.due_date ? format(parseISO(a.due_date), 'MMM d, yyyy') : '-']),
-      headStyles: { fillColor: [37, 99, 235] },
-      styles: { fontSize: 9 }
+      body: actions.length
+        ? actions.map(a => [
+            sanitize(a.status),
+            sanitize(a.title),
+            sanitize(a.assigned_to_name) || '-',
+            a.due_date ? format(parseISO(a.due_date), 'MMM d, yyyy') : '-'
+          ])
+        : [['-', 'No action items recorded', '-', '-']],
+      headStyles: { fillColor: [37, 99, 235], textColor: 255, fontSize: 9, fontStyle: 'bold' },
+      styles: { fontSize: 9, cellPadding: 2.5, overflow: 'linebreak', valign: 'top' },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      columnStyles: {
+        0: { cellWidth: 24 },
+        2: { cellWidth: 38 },
+        3: { cellWidth: 28 },
+      },
     })
+
+    // Footer page numbers
+    const pageCount = doc.internal.getNumberOfPages()
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i)
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(140)
+      doc.text(`Page ${i} of ${pageCount}`, pageW - marginX, pageH - 8, { align: 'right' })
+    }
+
     const clientSlug = (meeting.client_name || 'client').toLowerCase().replace(/\s+/g, '')
     const dateStr = format(parseISO(meeting.date), 'dd-MM-yyyy')
     doc.save(`${clientSlug}_MoM_${dateStr}.pdf`)
@@ -284,7 +403,7 @@ export default function MeetingDetail() {
         <div className="flex items-center justify-between mb-4">
           <h3>Action Items <span style={{ fontSize: '0.875rem', fontWeight: 400, color: 'var(--text-muted)', marginLeft: 4 }}>({actions.length})</span></h3>
           <div className="flex items-center gap-2">
-            {selectedActions.length > 0 && isSuperAdmin && (
+            {selectedActions.length > 0 && isPM && (
               <button className="btn btn-danger-outline btn-sm" onClick={() => setConfirm({ bulk: true })}><Trash2 size={13} />Delete ({selectedActions.length})</button>
             )}
             {isPM && meeting?.ai_summary && (
@@ -305,16 +424,18 @@ export default function MeetingDetail() {
               <thead>
                 <tr>
                   {isPM && <th className="th-checkbox"><input type="checkbox" checked={selectedActions.length === actions.length && actions.length > 0} onChange={e => setSelectedActions(e.target.checked ? actions.map(a => a.id) : [])} /></th>}
+                  <th style={{ width: 50 }}>S No</th>
                   <th>Status</th><th>Action Item</th><th>Assigned To</th><th>Due Date</th><th>Tracker</th>
                   {isPM && <th style={{ textAlign: 'right' }}>Actions</th>}
                 </tr>
               </thead>
               <tbody>
-                {actions.map(a => {
+                {actions.map((a, idx) => {
                   const effStatus = getEffectiveStatus(a)
                   return (
                     <tr key={a.id}>
                       {isPM && <td className="td-checkbox"><input type="checkbox" checked={selectedActions.includes(a.id)} onChange={e => setSelectedActions(s => e.target.checked ? [...s, a.id] : s.filter(x => x !== a.id))} /></td>}
+                      <td style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', textAlign: 'center' }}>{idx + 1}</td>
                       <td>
                         <select value={a.status} onChange={e => updateStatus(a.id, e.target.value)}
                           className={`badge badge-${effStatus}`}

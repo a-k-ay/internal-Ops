@@ -8,7 +8,7 @@ import Spinner from '../components/Spinner'
 import EmptyState from '../components/EmptyState'
 import Badge from '../components/Badge'
 import { format, parseISO } from 'date-fns'
-import * as XLSX from 'xlsx'
+import * as XLSX from 'xlsx-js-style'
 
 const EMPTY_FORM = { description: '', classification: 'issue', status: 'pending', raisedDate: format(new Date(), 'yyyy-MM-dd'), devStartDate: '', deployedDate: '', raisedBy: '', remarks: '' }
 
@@ -124,18 +124,42 @@ export default function Tracker() {
   })
 
   const exportExcel = () => {
-    const rows = filtered.map(i => ({
+    const rows = filtered.map((i, idx) => ({
+      'S No': idx + 1,
       'Description': i.description,
       'Classification': i.classification,
       'Status': i.status,
       'Raised By': i.raised_by || '',
-      'Raised Date': i.raised_date ? format(parseISO(i.raised_date), 'dd-MM-yyyy') : '',
+      'DOI': i.raised_date ? format(parseISO(i.raised_date), 'dd-MM-yyyy') : '',
       'Dev Start Date': i.dev_start_date ? format(parseISO(i.dev_start_date), 'dd-MM-yyyy') : '',
       'Deployed On': i.deployed_date ? format(parseISO(i.deployed_date), 'dd-MM-yyyy') : '',
       'Remarks': i.remarks || '',
-      'Linked Action': i.action_item_title || '',
     }))
     const ws = XLSX.utils.json_to_sheet(rows)
+
+    // Bold header row
+    const headerStyle = {
+      font: { bold: true, color: { rgb: 'FFFFFF' } },
+      fill: { fgColor: { rgb: '2563EB' } },
+      alignment: { horizontal: 'center', vertical: 'center' },
+    }
+    const range = XLSX.utils.decode_range(ws['!ref'])
+    for (let c = range.s.c; c <= range.e.c; c++) {
+      const addr = XLSX.utils.encode_cell({ r: 0, c })
+      if (ws[addr]) ws[addr].s = headerStyle
+    }
+
+    // Auto-fit column widths based on longest cell (header included)
+    const headers = Object.keys(rows[0] || {})
+    ws['!cols'] = headers.map(h => {
+      let max = h.length
+      for (const row of rows) {
+        const v = row[h] == null ? '' : String(row[h])
+        if (v.length > max) max = v.length
+      }
+      return { wch: Math.min(Math.max(max + 2, 8), 60) }
+    })
+
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Tracker')
     XLSX.writeFile(wb, `${selectedProject?.name || 'Tracker'}_${format(new Date(), 'yyyy-MM-dd')}.xlsx`)
@@ -228,7 +252,7 @@ export default function Tracker() {
               <p>{filtered.length} item{filtered.length !== 1 ? 's' : ''}</p>
             </div>
             <div className="flex items-center gap-2" style={{ flexWrap: 'wrap' }}>
-              {selected.length > 0 && isSuperAdmin && <button className="btn btn-danger-outline btn-sm" onClick={() => setConfirm({ bulk: true })}><Trash2 size={13} />Delete ({selected.length})</button>}
+              {selected.length > 0 && isPM && <button className="btn btn-danger-outline btn-sm" onClick={() => setConfirm({ bulk: true })}><Trash2 size={13} />Delete ({selected.length})</button>}
               <button className="btn btn-outline btn-sm" onClick={exportExcel}><Download size={13} />Excel</button>
               {isPM && <button className="btn btn-primary btn-sm" onClick={openAdd}><Plus size={14} />Add Item</button>}
             </div>
@@ -281,6 +305,7 @@ export default function Tracker() {
                         </th>
                       )}
 
+                      <th style={{ width: 50 }}>S No</th>
                       <th>Description</th>
                       <th>Type</th>
                       <th>Status</th>
@@ -294,7 +319,7 @@ export default function Tracker() {
                   </thead>
 
                   <tbody>
-                    {filtered.map(item => (
+                    {filtered.map((item, idx) => (
                       <tr key={item.id}>
                         {isPM && (
                           <td className="td-checkbox">
@@ -311,6 +336,7 @@ export default function Tracker() {
                             />
                           </td>
                         )}
+                        <td style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', textAlign: 'center' }}>{idx + 1}</td>
                         <td style={{ maxWidth: 240 }}>
                           <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 500 }}>{item.description}</span>
                           {item.remarks && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.remarks}</span>}

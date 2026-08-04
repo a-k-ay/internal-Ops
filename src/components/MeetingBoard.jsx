@@ -13,7 +13,6 @@ import { format } from 'date-fns'
 import ShareModal from './ShareModal'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import * as XLSX from 'xlsx'
 
 export default function MeetingBoard({ session, onOpenSettings }) {
     const [view, setView] = useState('home') // 'home', 'meetings', or 'tracker'
