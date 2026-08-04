@@ -1,24 +1,41 @@
 const express = require('express')
 const router = express.Router()
 const { query } = require('../db')
-const { verifyToken, requirePMOrAbove } = require('../middleware/auth')
+const { verifyToken, requirePMOrAbove, requireSuperAdmin } = require('../middleware/auth')
 const { auditLog } = require('../middleware/audit')
 
 // GET /api/clients
+// GET /api/clients
 router.get('/', verifyToken, async (req, res) => {
-  const { includeArchived } = req.query
+  const { includeArchived, memberId } = req.query
   try {
-    let q = `SELECT c.*, u.full_name as created_by_name,
-                    COUNT(DISTINCT p.id) as project_count
-             FROM clients c
-             LEFT JOIN users u ON u.id = c.created_by
-             LEFT JOIN projects p ON p.client_id = c.id
-             WHERE c.workspace_id = $1`
+    let q
     const params = [req.user.workspaceId]
-    if (!includeArchived || includeArchived === 'false') {
-      q += ` AND c.is_archived = FALSE`
+
+    // For member filtering: only return clients that have action items assigned to this member
+    if (memberId) {
+      q = `SELECT DISTINCT c.*, u.full_name as created_by_name,
+                  COUNT(DISTINCT p.id) as project_count
+           FROM clients c
+           LEFT JOIN users u ON u.id = c.created_by
+           LEFT JOIN projects p ON p.client_id = c.id
+           INNER JOIN action_items a ON a.client_id = c.id AND a.assigned_to = $2
+           WHERE c.workspace_id = $1 AND c.is_archived = FALSE
+           GROUP BY c.id, u.full_name ORDER BY c.name ASC`
+      params.push(memberId)
+    } else {
+      q = `SELECT c.*, u.full_name as created_by_name,
+                  COUNT(DISTINCT p.id) as project_count
+           FROM clients c
+           LEFT JOIN users u ON u.id = c.created_by
+           LEFT JOIN projects p ON p.client_id = c.id
+           WHERE c.workspace_id = $1`
+      if (!includeArchived || includeArchived === 'false') {
+        q += ` AND c.is_archived = FALSE`
+      }
+      q += ` GROUP BY c.id, u.full_name ORDER BY c.is_archived ASC, c.name ASC`
     }
-    q += ` GROUP BY c.id, u.full_name ORDER BY c.is_archived ASC, c.name ASC`
+
     const result = await query(q, params)
     res.json(result.rows)
   } catch (err) {
@@ -80,7 +97,7 @@ router.put('/:id', verifyToken, requirePMOrAbove, async (req, res) => {
 })
 
 // PUT /api/clients/:id/archive
-router.put('/:id/archive', verifyToken, requirePMOrAbove, async (req, res) => {
+router.put('/:id/archive', verifyToken, requireSuperAdmin, async (req, res) => {
   try {
     const result = await query(
       `UPDATE clients SET is_archived = TRUE, archived_at = NOW(), updated_at = NOW()
@@ -96,7 +113,7 @@ router.put('/:id/archive', verifyToken, requirePMOrAbove, async (req, res) => {
 })
 
 // PUT /api/clients/:id/restore
-router.put('/:id/restore', verifyToken, requirePMOrAbove, async (req, res) => {
+router.put('/:id/restore', verifyToken, requireSuperAdmin, async (req, res) => {
   try {
     const result = await query(
       `UPDATE clients SET is_archived = FALSE, archived_at = NULL, updated_at = NOW()
@@ -108,6 +125,19 @@ router.put('/:id/restore', verifyToken, requirePMOrAbove, async (req, res) => {
     res.json(result.rows[0])
   } catch (err) {
     res.status(500).json({ error: 'Failed to restore client' })
+  }
+})
+
+// DELETE /api/clients/:id — super_admin only (permanent delete)
+router.delete('/:id', verifyToken, requireSuperAdmin, async (req, res) => {
+  try {
+    const client = await query(`SELECT name FROM clients WHERE id = $1 AND workspace_id = $2`, [req.params.id, req.user.workspaceId])
+    if (!client.rows[0]) return res.status(404).json({ error: 'Client not found' })
+    await query(`DELETE FROM clients WHERE id = $1 AND workspace_id = $2`, [req.params.id, req.user.workspaceId])
+    await auditLog({ workspaceId: req.user.workspaceId, userId: req.user.id, userName: req.user.fullName, action: 'delete', entityType: 'client', entityId: req.params.id, entityName: client.rows[0].name })
+    res.json({ message: 'Client deleted' })
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete client' })
   }
 })
 

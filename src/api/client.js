@@ -36,17 +36,26 @@ export const usersAPI = {
 
 // Clients
 export const clientsAPI = {
-  list: (includeArchived = false) => apiFetch(`/clients?includeArchived=${includeArchived}`),
+  list: (includeArchived = false, memberId = null) => {
+    const params = memberId ? `memberId=${memberId}` : `includeArchived=${includeArchived}`
+    return apiFetch(`/clients?${params}`)
+  },
   get: (id) => apiFetch(`/clients/${id}`),
   create: (data) => apiFetch('/clients', { method: 'POST', body: JSON.stringify(data) }),
   update: (id, data) => apiFetch(`/clients/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   archive: (id) => apiFetch(`/clients/${id}/archive`, { method: 'PUT' }),
   restore: (id) => apiFetch(`/clients/${id}/restore`, { method: 'PUT' }),
+  delete: (id) => apiFetch(`/clients/${id}`, { method: 'DELETE' }),
 }
 
 // Projects
 export const projectsAPI = {
-  list: (clientId) => apiFetch(`/projects${clientId ? `?clientId=${clientId}` : ''}`),
+  list: (clientId, memberId = null) => {
+    const params = new URLSearchParams()
+    if (clientId) params.set('clientId', clientId)
+    if (memberId) params.set('memberId', memberId)
+    return apiFetch(`/projects${params.toString() ? `?${params}` : ''}`)
+  },
   get: (id) => apiFetch(`/projects/${id}`),
   create: (data) => apiFetch('/projects', { method: 'POST', body: JSON.stringify(data) }),
   update: (id, data) => apiFetch(`/projects/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
@@ -114,6 +123,7 @@ export const searchAPI = {
 export const aiAPI = {
   extractActionItems: (data) => apiFetch('/ai/extract-action-items', { method: 'POST', body: JSON.stringify(data) }),
   meetingSummary: (data) => apiFetch('/ai/meeting-summary', { method: 'POST', body: JSON.stringify(data) }),
+  extractFromSummary: (data) => apiFetch('/ai/extract-from-summary', { method: 'POST', body: JSON.stringify(data) }),
 }
 
 // Audit

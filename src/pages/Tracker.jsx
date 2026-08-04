@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { clientsAPI, projectsAPI, trackerAPI } from '../api/client'
 import { useAuth } from '../context/AuthContext'
-import { Plus, ChevronRight, ChevronLeft, Edit2, Trash2, Search, Filter, Target, Download, Link2, FolderOpen } from 'lucide-react'
+import { Plus, ChevronRight, ChevronLeft, Edit2, Trash2, Search, Filter, Target, Download, Link2, FolderOpen, Archive } from 'lucide-react'
 import Modal from '../components/Modal'
 import ConfirmDialog from '../components/ConfirmDialog'
 import Spinner from '../components/Spinner'
@@ -13,7 +13,7 @@ import * as XLSX from 'xlsx'
 const EMPTY_FORM = { description: '', classification: 'issue', status: 'pending', raisedDate: format(new Date(), 'yyyy-MM-dd'), devStartDate: '', deployedDate: '', raisedBy: '', remarks: '' }
 
 export default function Tracker() {
-  const { isPM } = useAuth()
+  const { isPM, user, isMember, isSuperAdmin } = useAuth()
   const [step, setStep] = useState('clients')
   const [clients, setClients] = useState([])
   const [selectedClient, setSelectedClient] = useState(null)
@@ -35,12 +35,17 @@ export default function Tracker() {
   const [selected, setSelected] = useState([])
 
   useEffect(() => {
-    clientsAPI.list().then(setClients).catch(console.error).finally(() => setLoading(false))
-  }, [])
+    const memberId = isMember ? user?.id : null
+    clientsAPI.list(false, memberId).then(setClients).catch(console.error).finally(() => setLoading(false))
+  }, [isMember, user?.id])
 
   const selectClient = async (c) => {
+    if (c.is_archived) return
     setSelectedClient(c); setStep('projects'); setLoading(true)
-    try { setProjects(await projectsAPI.list(c.id)) } catch {}
+    try {
+      const memberId = isMember ? user?.id : null
+      setProjects(await projectsAPI.list(c.id, memberId))
+    } catch {}
     setLoading(false)
   }
 
@@ -89,12 +94,12 @@ export default function Tracker() {
   }
 
   const handleDelete = async (id) => {
-    try { await trackerAPI.delete(id); setItems(i => i.filter(x => x.id !== id)) } catch {}
+    try { await trackerAPI.delete(id); setItems(i => i.filter(x => x.id !== id)) } catch (err) { alert(err.message) }
     setConfirm(null)
   }
 
   const bulkDelete = async () => {
-    try { await trackerAPI.bulkDelete(selected); setItems(i => i.filter(x => !selected.includes(x.id))); setSelected([]) } catch {}
+    try { await trackerAPI.bulkDelete(selected); setItems(i => i.filter(x => !selected.includes(x.id))); setSelected([]) } catch (err) { alert(err.message) }
     setConfirm(null)
   }
 
@@ -156,10 +161,22 @@ export default function Tracker() {
           ) : (
             <div className="grid-auto">
               {clients.map(c => (
-                <div key={c.id} className="card card-hover" style={{ cursor: 'pointer' }} onClick={() => selectClient(c)}>
+                <div key={c.id} className={`card${c.is_archived ? '' : ' card-hover'}`}
+                  style={{ cursor: c.is_archived ? 'not-allowed' : 'pointer', opacity: c.is_archived ? 0.65 : 1 }}
+                  onClick={() => selectClient(c)}>
                   <div className="flex items-center justify-between">
-                    <div><h4>{c.name}</h4>{c.project_name && <p style={{ fontSize: '0.8rem', marginTop: 2 }}>{c.project_name}</p>}</div>
-                    <ChevronRight size={18} style={{ color: 'var(--text-muted)' }} />
+                    <div style={{ minWidth: 0 }}>
+                      <div className="flex items-center gap-2">
+                        <h4 className="truncate">{c.name}</h4>
+                        {c.is_archived && (
+                          <span className="flex items-center gap-1" style={{ fontSize: '0.7rem', color: 'var(--text-muted)', background: 'var(--bg-muted, #f1f1f1)', borderRadius: 4, padding: '0.1rem 0.4rem', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                            <Archive size={10} />archived
+                          </span>
+                        )}
+                      </div>
+                      {c.project_name && <p style={{ fontSize: '0.8rem', marginTop: 2 }}>{c.project_name}</p>}
+                    </div>
+                    {!c.is_archived && <ChevronRight size={18} style={{ color: 'var(--text-muted)' }} />}
                   </div>
                 </div>
               ))}
@@ -206,7 +223,7 @@ export default function Tracker() {
               <p>{filtered.length} item{filtered.length !== 1 ? 's' : ''}</p>
             </div>
             <div className="flex items-center gap-2" style={{ flexWrap: 'wrap' }}>
-              {selected.length > 0 && isPM && <button className="btn btn-danger-outline btn-sm" onClick={() => setConfirm({ bulk: true })}><Trash2 size={13} />Delete ({selected.length})</button>}
+              {selected.length > 0 && isSuperAdmin && <button className="btn btn-danger-outline btn-sm" onClick={() => setConfirm({ bulk: true })}><Trash2 size={13} />Delete ({selected.length})</button>}
               <button className="btn btn-outline btn-sm" onClick={exportExcel}><Download size={13} />Excel</button>
               {isPM && <button className="btn btn-primary btn-sm" onClick={openAdd}><Plus size={14} />Add Item</button>}
             </div>
@@ -254,9 +271,7 @@ export default function Tracker() {
                           <input
                             type="checkbox"
                             checked={selected.length === filtered.length && filtered.length > 0}
-                            onChange={e =>
-                              setSelected(e.target.checked ? filtered.map(i => i.id) : [])
-                            }
+                            onChange={e => setSelected(e.target.checked ? filtered.map(i => i.id) : [])}
                           />
                         </th>
                       )}
@@ -324,7 +339,7 @@ export default function Tracker() {
                                 <Edit2 size={14} />
                               </button>
 
-                              {isPM && (
+                              {isSuperAdmin && (
                                 <button
                                   className="btn-ghost"
                                   style={{ color: 'var(--error)' }}

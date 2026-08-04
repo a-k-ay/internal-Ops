@@ -10,7 +10,7 @@ import {
 import { format } from 'date-fns'
 
 export default function AppLayout() {
-  const { user, logout, isSuperAdmin } = useAuth()
+  const { user, logout, isSuperAdmin, isMember } = useAuth()
   const navigate = useNavigate()
   const [theme, setTheme] = useState(() => localStorage.getItem('mab_theme') || 'light')
   const [unreadCount, setUnreadCount] = useState(0)
@@ -53,12 +53,17 @@ export default function AppLayout() {
     if (showSearch && searchRef.current) searchRef.current.focus()
   }, [showSearch])
 
-  const navItems = [
-    { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { to: '/clients', icon: Building2, label: 'Clients' },
-    { to: '/meetings', icon: Calendar, label: 'Meetings' },
-    { to: '/tracker', icon: Target, label: 'Task Tracker' },
-  ]
+  const navItems = isMember
+    ? [
+        { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+        { to: '/tracker', icon: Target, label: 'Task Tracker' },
+      ]
+    : [
+        { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+        { to: '/clients', icon: Building2, label: 'Clients' },
+        { to: '/meetings', icon: Calendar, label: 'Meetings' },
+        { to: '/tracker', icon: Target, label: 'Task Tracker' },
+      ]
 
   const totalResults = searchResults ? Object.values(searchResults).reduce((a, b) => a + b.length, 0) : 0
 

@@ -1,27 +1,43 @@
 const express = require('express')
 const router = express.Router()
 const { query } = require('../db')
-const { verifyToken, requirePMOrAbove } = require('../middleware/auth')
+const { verifyToken, requirePMOrAbove, requireSuperAdmin } = require('../middleware/auth')
 const { auditLog } = require('../middleware/audit')
 
-// GET /api/projects?clientId=xxx
+// GET /api/projects?clientId=xxx&memberId=xxx
 router.get('/', verifyToken, async (req, res) => {
-  const { clientId } = req.query
+  const { clientId, memberId } = req.query
   try {
-    let q = `SELECT p.*, c.name as client_name,
-                    COUNT(DISTINCT m.id) as meeting_count,
-                    COUNT(DISTINCT t.id) as tracker_count
-             FROM projects p
-             LEFT JOIN clients c ON c.id = p.client_id
-             LEFT JOIN meetings m ON m.project_id = p.id
-             LEFT JOIN tracker_items t ON t.project_id = p.id
-             WHERE p.workspace_id = $1`
+    let q
     const params = [req.user.workspaceId]
-    if (clientId) {
-      q += ` AND p.client_id = $2`
-      params.push(clientId)
+
+    // For member filtering: only return projects that have action items assigned to this member
+    if (memberId) {
+      q = `SELECT DISTINCT p.*, c.name as client_name,
+                  COUNT(DISTINCT m.id) as meeting_count,
+                  COUNT(DISTINCT t.id) as tracker_count
+           FROM projects p
+           LEFT JOIN clients c ON c.id = p.client_id
+           LEFT JOIN meetings m ON m.project_id = p.id
+           LEFT JOIN tracker_items t ON t.project_id = p.id
+           INNER JOIN action_items a ON a.meeting_id = m.id AND a.assigned_to = $2
+           WHERE p.workspace_id = $1`
+      params.push(memberId)
+      if (clientId) { q += ` AND p.client_id = $3`; params.push(clientId) }
+      q += ` GROUP BY p.id, c.name ORDER BY p.created_at DESC`
+    } else {
+      q = `SELECT p.*, c.name as client_name,
+                  COUNT(DISTINCT m.id) as meeting_count,
+                  COUNT(DISTINCT t.id) as tracker_count
+           FROM projects p
+           LEFT JOIN clients c ON c.id = p.client_id
+           LEFT JOIN meetings m ON m.project_id = p.id
+           LEFT JOIN tracker_items t ON t.project_id = p.id
+           WHERE p.workspace_id = $1`
+      if (clientId) { q += ` AND p.client_id = $2`; params.push(clientId) }
+      q += ` GROUP BY p.id, c.name ORDER BY p.created_at DESC`
     }
-    q += ` GROUP BY p.id, c.name ORDER BY p.created_at DESC`
+
     const result = await query(q, params)
     res.json(result.rows)
   } catch (err) {
@@ -81,15 +97,18 @@ router.put('/:id', verifyToken, requirePMOrAbove, async (req, res) => {
   }
 })
 
-// DELETE /api/projects/:id
-router.delete('/:id', verifyToken, requirePMOrAbove, async (req, res) => {
+// DELETE /api/projects/:id — super_admin only
+router.delete('/:id', verifyToken, requireSuperAdmin, async (req, res) => {
   try {
     const proj = await query(`SELECT name FROM projects WHERE id = $1 AND workspace_id = $2`, [req.params.id, req.user.workspaceId])
     if (!proj.rows[0]) return res.status(404).json({ error: 'Project not found' })
+    // Schema has ON DELETE CASCADE from projects → meetings → action_items/tracker_items
+    // So deleting the project cascades everything. Just delete it.
     await query(`DELETE FROM projects WHERE id = $1 AND workspace_id = $2`, [req.params.id, req.user.workspaceId])
     await auditLog({ workspaceId: req.user.workspaceId, userId: req.user.id, userName: req.user.fullName, action: 'delete', entityType: 'project', entityId: req.params.id, entityName: proj.rows[0].name })
     res.json({ message: 'Project deleted' })
   } catch (err) {
+    console.error('Delete project error:', err.message)
     res.status(500).json({ error: 'Failed to delete project' })
   }
 })

@@ -52,6 +52,28 @@ router.post('/', verifyToken, requireSuperAdmin, async (req, res) => {
   }
 })
 
+// PUT /api/users/profile/me - update own profile (must be BEFORE /:id to avoid conflict)
+router.put('/profile/me', verifyToken, async (req, res) => {
+  const { fullName, currentPassword, newPassword } = req.body
+
+  try {
+    if (newPassword) {
+      if (!currentPassword) return res.status(400).json({ error: 'Current password required' })
+      const userResult = await query(`SELECT password_hash FROM users WHERE id = $1`, [req.user.id])
+      const valid = await bcrypt.compare(currentPassword, userResult.rows[0].password_hash)
+      if (!valid) return res.status(401).json({ error: 'Current password is incorrect' })
+      if (newPassword.length < 6) return res.status(400).json({ error: 'New password must be at least 6 characters' })
+      const passwordHash = await bcrypt.hash(newPassword, 12)
+      await query(`UPDATE users SET full_name = $1, password_hash = $2, updated_at = NOW() WHERE id = $3`, [fullName, passwordHash, req.user.id])
+    } else {
+      await query(`UPDATE users SET full_name = $1, updated_at = NOW() WHERE id = $2`, [fullName, req.user.id])
+    }
+    res.json({ message: 'Profile updated successfully' })
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update profile' })
+  }
+})
+
 // PUT /api/users/:id - update user
 router.put('/:id', verifyToken, requireSuperAdmin, async (req, res) => {
   const { fullName, role, password } = req.body
@@ -108,33 +130,22 @@ router.delete('/:id', verifyToken, requireSuperAdmin, async (req, res) => {
   if (userId === req.user.id) return res.status(400).json({ error: 'Cannot delete yourself' })
 
   try {
+    // Nullify all FK references to this user before deleting to avoid constraint violations
+    await query(`UPDATE action_items SET assigned_to = NULL WHERE assigned_to = $1 AND workspace_id = $2`, [userId, req.user.workspaceId])
+    await query(`UPDATE action_items SET created_by = NULL WHERE created_by = $1 AND workspace_id = $2`, [userId, req.user.workspaceId])
+    await query(`UPDATE tracker_items SET created_by = NULL WHERE created_by = $1 AND workspace_id = $2`, [userId, req.user.workspaceId])
+    await query(`UPDATE meetings SET created_by = NULL WHERE created_by = $1 AND workspace_id = $2`, [userId, req.user.workspaceId])
+    await query(`UPDATE clients SET created_by = NULL WHERE created_by = $1 AND workspace_id = $2`, [userId, req.user.workspaceId])
+    await query(`UPDATE projects SET created_by = NULL WHERE created_by = $1 AND workspace_id = $2`, [userId, req.user.workspaceId])
+    // tracker_shares has no workspace_id — filter by user id only
+    await query(`DELETE FROM tracker_shares WHERE shared_with_user_id = $1 OR created_by = $1`, [userId])
+
     await query(`DELETE FROM users WHERE id = $1 AND workspace_id = $2`, [userId, req.user.workspaceId])
     await auditLog({ workspaceId: req.user.workspaceId, userId: req.user.id, userName: req.user.fullName, action: 'delete', entityType: 'user', entityId: userId })
     res.json({ message: 'User deleted' })
   } catch (err) {
+    console.error('Delete user error:', err.message)
     res.status(500).json({ error: 'Failed to delete user' })
-  }
-})
-
-// PUT /api/users/profile/me - update own profile
-router.put('/profile/me', verifyToken, async (req, res) => {
-  const { fullName, currentPassword, newPassword } = req.body
-
-  try {
-    if (newPassword) {
-      if (!currentPassword) return res.status(400).json({ error: 'Current password required' })
-      const userResult = await query(`SELECT password_hash FROM users WHERE id = $1`, [req.user.id])
-      const valid = await bcrypt.compare(currentPassword, userResult.rows[0].password_hash)
-      if (!valid) return res.status(401).json({ error: 'Current password is incorrect' })
-      if (newPassword.length < 6) return res.status(400).json({ error: 'New password must be at least 6 characters' })
-      const passwordHash = await bcrypt.hash(newPassword, 12)
-      await query(`UPDATE users SET full_name = $1, password_hash = $2, updated_at = NOW() WHERE id = $3`, [fullName, passwordHash, req.user.id])
-    } else {
-      await query(`UPDATE users SET full_name = $1, updated_at = NOW() WHERE id = $2`, [fullName, req.user.id])
-    }
-    res.json({ message: 'Profile updated successfully' })
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to update profile' })
   }
 })
 

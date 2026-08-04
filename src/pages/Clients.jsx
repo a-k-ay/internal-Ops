@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { clientsAPI } from '../api/client'
 import { useAuth } from '../context/AuthContext'
-import { Plus, Search, Edit2, Archive, RotateCcw, Building2, Phone, Mail, User } from 'lucide-react'
+import { Plus, Search, Edit2, Archive, RotateCcw, Building2, Phone, Mail, User, Trash2 } from 'lucide-react'
 import Modal from '../components/Modal'
 import ConfirmDialog from '../components/ConfirmDialog'
 import Spinner from '../components/Spinner'
@@ -11,7 +11,7 @@ import Badge from '../components/Badge'
 const EMPTY_FORM = { name: '', contactPerson: '', contactEmail: '', contactPhone: '', industry: '' }
 
 export default function Clients() {
-  const { isPM } = useAuth()
+  const { isPM, isSuperAdmin } = useAuth()
   const [clients, setClients] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -53,6 +53,11 @@ export default function Clients() {
     setConfirm(null)
   }
 
+  const handleDelete = async (id) => {
+    try { await clientsAPI.delete(id); load() } catch {}
+    setConfirm(null)
+  }
+
   const handleRestore = async (id) => {
     try { await clientsAPI.restore(id); load() } catch {}
   }
@@ -79,7 +84,7 @@ export default function Clients() {
           <button className={`btn btn-outline btn-sm`} onClick={() => setShowArchived(s => !s)}>
             {showArchived ? 'Hide Archived' : 'Show Archived'}
           </button>
-          {isPM && <button className="btn btn-primary" onClick={openAdd}><Plus size={16} />Add Client</button>}
+          {isSuperAdmin && <button className="btn btn-primary" onClick={openAdd}><Plus size={16} />Add Client</button>}
         </div>
       </div>
 
@@ -116,13 +121,17 @@ export default function Clients() {
                 {c.industry && <span style={{ fontSize: '0.75rem', fontStyle: 'italic' }}>{c.industry}</span>}
               </div>
 
-              {isPM && (
+              {isSuperAdmin && (
                 <div className="flex gap-2" style={{ borderTop: '1px solid var(--border)', paddingTop: '0.75rem', marginTop: '0.25rem' }}>
                   <button className="btn btn-outline btn-sm flex-1" onClick={() => openEdit(c)}><Edit2 size={13} />Edit</button>
-                  {c.is_archived
-                    ? <button className="btn btn-outline btn-sm flex-1" onClick={() => handleRestore(c.id)}><RotateCcw size={13} />Restore</button>
-                    : <button className="btn btn-outline btn-sm flex-1" style={{ color: 'var(--warning)' }} onClick={() => setConfirm(c)}><Archive size={13} />Archive</button>
-                  }
+                  {c.is_archived ? (
+                    <>
+                      <button className="btn btn-outline btn-sm flex-1" onClick={() => handleRestore(c.id)}><RotateCcw size={13} />Restore</button>
+                      <button className="btn btn-outline btn-sm" style={{ color: 'var(--error)' }} onClick={() => setConfirm({ type: 'delete', client: c })}><Trash2 size={13} /></button>
+                    </>
+                  ) : (
+                    <button className="btn btn-outline btn-sm flex-1" style={{ color: 'var(--warning)' }} onClick={() => setConfirm({ type: 'archive', client: c })}><Archive size={13} />Archive</button>
+                  )}
                 </div>
               )}
             </div>
@@ -165,9 +174,13 @@ export default function Clients() {
         </Modal>
       )}
 
-      {confirm && (
-        <ConfirmDialog title="Archive Client" message={`Archive "${confirm.name}"? All meetings and tracker data will be preserved as read-only.`}
-          onConfirm={() => handleArchive(confirm)} onCancel={() => setConfirm(null)} />
+      {confirm?.type === 'archive' && (
+        <ConfirmDialog title="Archive Client" message={`Archive "${confirm.client.name}"? All meetings and tracker data will be preserved as read-only.`}
+          onConfirm={() => handleArchive(confirm.client)} onCancel={() => setConfirm(null)} />
+      )}
+      {confirm?.type === 'delete' && (
+        <ConfirmDialog title="Permanently Delete Client" message={`Delete "${confirm.client.name}" permanently? This will remove all associated data and cannot be undone.`}
+          onConfirm={() => handleDelete(confirm.client.id)} onCancel={() => setConfirm(null)} danger />
       )}
     </div>
   )

@@ -3,10 +3,57 @@ const router = express.Router()
 const { query } = require('../db')
 const { verifyToken } = require('../middleware/auth')
 
-// GET /api/dashboard - global KPIs
+// GET /api/dashboard - global KPIs (shows different data based on user role)
 router.get('/', verifyToken, async (req, res) => {
   const wid = req.user.workspaceId
+  const uid = req.user.id
+  const userRole = req.user.role
+
   try {
+    // For members, show task-focused dashboard (filtered by assigned_to user)
+    if (userRole === 'member') {
+      const [
+        myOpenTasks,
+        myDueThisWeek,
+        myOverdueTasks,
+        myCompletedThisMonth,
+        tasksByStatus,
+        tasksByClassification,
+        upcomingTasks,
+        tasksDueSoon
+      ] = await Promise.all([
+        // My assigned open tasks
+        query(`SELECT COUNT(*)::int as count FROM action_items WHERE workspace_id = $1 AND assigned_to = $2 AND status IN ('open','in_progress')`, [wid, uid]),
+        // Due this week
+        query(`SELECT COUNT(*)::int as count FROM action_items WHERE workspace_id = $1 AND assigned_to = $2 AND due_date >= CURRENT_DATE AND due_date < CURRENT_DATE + INTERVAL '7 days'`, [wid, uid]),
+        // Overdue tasks (assigned to me, not closed)
+        query(`SELECT COUNT(*)::int as count FROM action_items WHERE workspace_id = $1 AND assigned_to = $2 AND due_date < CURRENT_DATE AND status NOT IN ('closed')`, [wid, uid]),
+        // Completed this month (assigned to me)
+        query(`SELECT COUNT(*)::int as count FROM action_items WHERE workspace_id = $1 AND assigned_to = $2 AND status = 'closed' AND date_trunc('month', updated_at) = date_trunc('month', CURRENT_DATE)`, [wid, uid]),
+        // Tasks by status (assigned to me) — parseInt count from postgres string
+        query(`SELECT status, COUNT(*)::int as count FROM action_items WHERE workspace_id = $1 AND assigned_to = $2 GROUP BY status ORDER BY status`, [wid, uid]),
+        // Tasks by project (assigned to me)
+        query(`SELECT COALESCE(p.name, 'No Project') as project, COUNT(*)::int as count FROM action_items a LEFT JOIN meetings m ON m.id = a.meeting_id LEFT JOIN projects p ON p.id = m.project_id WHERE a.workspace_id = $1 AND a.assigned_to = $2 GROUP BY p.name ORDER BY count DESC LIMIT 10`, [wid, uid]),
+        // Upcoming tasks (next 7 days, assigned to me)
+        query(`SELECT a.id, a.title, a.due_date, a.status, c.name as client_name FROM action_items a LEFT JOIN clients c ON c.id = a.client_id WHERE a.workspace_id = $1 AND a.assigned_to = $2 AND a.due_date >= CURRENT_DATE AND a.due_date <= CURRENT_DATE + INTERVAL '7 days' ORDER BY a.due_date ASC LIMIT 5`, [wid, uid]),
+        // Tasks due soon (next 14 days, assigned to me, not closed)
+        query(`SELECT a.id, a.title, a.due_date, a.status, c.name as client_name FROM action_items a LEFT JOIN clients c ON c.id = a.client_id WHERE a.workspace_id = $1 AND a.assigned_to = $2 AND a.due_date >= CURRENT_DATE AND a.due_date <= CURRENT_DATE + INTERVAL '14 days' AND a.status NOT IN ('closed') ORDER BY a.due_date ASC LIMIT 8`, [wid, uid])
+      ])
+
+      return res.json({
+        isMemberDashboard: true,
+        myOpenTasks: parseInt(myOpenTasks.rows[0].count),
+        myDueThisWeek: parseInt(myDueThisWeek.rows[0].count),
+        myOverdueTasks: parseInt(myOverdueTasks.rows[0].count),
+        myCompletedThisMonth: parseInt(myCompletedThisMonth.rows[0].count),
+        tasksByStatus: tasksByStatus.rows,
+        tasksByClassification: tasksByClassification.rows,
+        upcomingTasks: upcomingTasks.rows,
+        tasksDueSoon: tasksDueSoon.rows
+      })
+    }
+
+    // For PM/Admin, show workspace-wide dashboard
     const [
       activeClients,
       openActions,
@@ -39,6 +86,7 @@ router.get('/', verifyToken, async (req, res) => {
     ])
 
     res.json({
+      isMemberDashboard: false,
       totalActiveClients: parseInt(activeClients.rows[0].count),
       openActionItems: parseInt(openActions.rows[0].count),
       overdueActionItems: parseInt(overdueActions.rows[0].count),

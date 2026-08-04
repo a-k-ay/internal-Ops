@@ -3,7 +3,7 @@ const router = express.Router()
 const { verifyToken, requirePMOrAbove } = require('../middleware/auth')
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${GEMINI_API_KEY}`
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`
 
 async function callGemini(prompt) {
   const res = await fetch(GEMINI_URL, {
@@ -59,39 +59,85 @@ Example: [{"title":"Set up staging server","assigned_to_name":"John","due_date":
 
 // POST /api/ai/meeting-summary
 router.post('/meeting-summary', verifyToken, requirePMOrAbove, async (req, res) => {
-  const { title, date, attendees, venue, duration, objective, discussionPoints, actionItems } = req.body
+  const { title, date, attendees, venue, duration, objective, discussionPoints } = req.body
   if (!title || !discussionPoints) return res.status(400).json({ error: 'Meeting title and discussion points are required' })
   if (!GEMINI_API_KEY) return res.status(503).json({ error: 'AI service not configured' })
 
   try {
-    const actionList = actionItems && actionItems.length > 0
-      ? actionItems.map(a => `- ${a.title} (Assigned to: ${a.assigned_to_name || 'TBD'}, Due: ${a.due_date || 'TBD'})`).join('\n')
-      : 'No action items recorded'
-
-    const prompt = `You are a professional business analyst. Generate a clean, formal Minutes of Meeting (MoM) summary.
+    const prompt = `You are a professional business analyst. Generate a formal Minutes of Meeting (MoM) summary from the notes below.
 
 Meeting Details:
 Title: ${title}
 Date: ${date}
 Attendees: ${attendees || 'Not specified'}
-Venue/Duration: ${venue || ''} ${duration || ''}
+Venue/Duration: ${[venue, duration].filter(Boolean).join(' | ') || 'Not specified'}
 Objective: ${objective || 'Not specified'}
 
-Discussion Points:
+Raw Meeting Notes:
 ${discussionPoints}
 
-Action Items:
-${actionList}
+Format the output EXACTLY as follows (use these exact section headers):
 
-Write a professional MoM summary in plain text (no markdown, no bullet symbols except for action items).
-Include: a brief executive summary paragraph, key decisions made, and a formatted action items section.
-Keep it concise and professional. Maximum 300 words.`
+EXECUTIVE SUMMARY
+Write 2-3 sentences summarising the meeting purpose and outcome.
+
+KEY DISCUSSIONS
+1. First discussion point
+2. Second discussion point
+3. (continue numbering for each topic)
+
+KEY DECISIONS
+1. First decision made
+2. Second decision made
+(If no clear decisions, write: No formal decisions recorded.)
+
+Rules:
+- Section headers must be in ALL CAPS on their own line
+- Each point under a section must be numbered starting from 1
+- Do not use markdown, asterisks, hyphens, or bullet symbols
+- Do not include an Action Items section
+- Keep each numbered point to one or two sentences
+- Maximum 350 words total`
 
     const summary = await callGemini(prompt)
     res.json({ summary: summary.trim() })
   } catch (err) {
     console.error('AI summary error:', err.message)
     res.status(500).json({ error: err.message || 'AI summary generation failed. Please try again.' })
+  }
+})
+
+// POST /api/ai/extract-from-summary
+router.post('/extract-from-summary', verifyToken, requirePMOrAbove, async (req, res) => {
+  const { summary, attendees } = req.body
+  if (!summary) return res.status(400).json({ error: 'Summary text is required' })
+  if (!GEMINI_API_KEY) return res.status(503).json({ error: 'AI service not configured' })
+
+  try {
+    const prompt = `You are a project coordinator assistant. Extract all action items from the following meeting summary.
+
+Meeting Summary:
+${summary}
+
+${attendees ? `Attendees: ${attendees}` : ''}
+
+Return a JSON array of action items. Each item must have:
+- "title": the action to be done (clear, concise)
+- "assigned_to_name": person responsible (use name from summary, or "Unassigned" if unclear)
+- "due_date": date in YYYY-MM-DD format if mentioned, otherwise null
+
+Return ONLY valid JSON array, no explanation, no markdown code blocks.
+Example: [{"title":"Set up staging server","assigned_to_name":"John","due_date":"2025-08-01"}]`
+
+    const text = await callGemini(prompt)
+    const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+    const items = JSON.parse(cleaned)
+    if (!Array.isArray(items)) throw new Error('Invalid response format')
+    res.json({ items })
+  } catch (err) {
+    console.error('AI extract-from-summary error:', err.message)
+    if (err instanceof SyntaxError) return res.status(500).json({ error: 'AI returned malformed data. Please try again.' })
+    res.status(500).json({ error: err.message || 'AI extraction failed. Please try again.' })
   }
 })
 

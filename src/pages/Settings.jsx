@@ -131,8 +131,11 @@ function UsersTab({ isSuperAdmin }) {
     setSaving(false)
   }
 
-  const toggleActive = async (id) => { try { await usersAPI.toggleActive(id); load() } catch {} }
-  const deleteUser = async (id) => { try { await usersAPI.delete(id); load() } catch {} setConfirm(null) }
+  const toggleActive = async (id) => { try { await usersAPI.toggleActive(id); load() } catch (err) { alert(err.message) } }
+  const deleteUser = async (id) => {
+    try { await usersAPI.delete(id); load() } catch (err) { alert(err.message) }
+    setConfirm(null)
+  }
 
   const setF = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }))
 

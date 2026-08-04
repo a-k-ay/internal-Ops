@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { meetingsAPI, actionItemsAPI, trackerAPI, usersAPI, aiAPI } from '../api/client'
 import { useAuth } from '../context/AuthContext'
-import { ChevronLeft, Plus, Edit2, Trash2, Download, Sparkles, Link2, CheckSquare, AlertCircle } from 'lucide-react'
+import { ChevronLeft, Plus, Edit2, Trash2, Download, Sparkles, Link2, CheckSquare, AlertCircle, FileText } from 'lucide-react'
 import Modal from '../components/Modal'
 import ConfirmDialog from '../components/ConfirmDialog'
 import Spinner from '../components/Spinner'
@@ -16,7 +16,7 @@ const EMPTY_ACTION = { title: '', assignedTo: '', assignedToName: '', dueDate: '
 
 export default function MeetingDetail() {
   const { meetingId } = useParams()
-  const { isPM, user } = useAuth()
+  const { isPM, user, isMember, isSuperAdmin } = useAuth()
   const navigate = useNavigate()
 
   const [meeting, setMeeting] = useState(null)
@@ -33,8 +33,6 @@ export default function MeetingDetail() {
   const [aiLoading, setAiLoading] = useState(false)
   const [aiNotes, setAiNotes] = useState('')
   const [showAiModal, setShowAiModal] = useState(false)
-  const [aiSummary, setAiSummary] = useState('')
-  const [showSummaryModal, setShowSummaryModal] = useState(false)
   const [showTrackerModal, setShowTrackerModal] = useState(false)
   const [trackerAction, setTrackerAction] = useState(null)
   const [trackerForm, setTrackerForm] = useState({ classification: 'issue', raisedDate: format(new Date(), 'yyyy-MM-dd'), remarks: '' })
@@ -128,63 +126,45 @@ export default function MeetingDetail() {
     setSaving(false)
   }
 
-  // AI: extract action items from notes
-  const handleAiExtract = async () => {
+  // AI: generate summary from raw notes (opens notes input modal)
+  const handleGenerateSummary = async () => {
     if (!aiNotes.trim()) return
     setAiLoading(true)
     try {
-      const res = await aiAPI.extractActionItems({ notes: aiNotes, attendees: meeting?.attendees })
-      // Pre-fill action items from AI
-      for (const item of res.items) {
-        const matchUser = users.find(u => u.full_name.toLowerCase().includes((item.assigned_to_name || '').toLowerCase()))
-        await actionItemsAPI.create({
-          meetingId: meeting.id, projectId: meeting.project_id, clientId: meeting.client_id,
-          title: item.title, assignedToName: item.assigned_to_name,
-          assignedTo: matchUser?.id || null, dueDate: item.due_date || null
-        })
-      }
-      setActions(await actionItemsAPI.list({ meetingId }))
+      const res = await aiAPI.meetingSummary({
+        title: meeting.title, date: meeting.date, attendees: meeting.attendees,
+        venue: meeting.venue, duration: meeting.duration, objective: meeting.objective,
+        discussionPoints: aiNotes
+      })
+      await meetingsAPI.update(meeting.id, { ...meeting, discussionPoints: aiNotes, aiSummary: res.summary })
+      setMeeting(m => ({ ...m, discussion_points: aiNotes, ai_summary: res.summary }))
       setShowAiModal(false)
       setAiNotes('')
     } catch (err) { alert(err.message) }
     setAiLoading(false)
   }
 
-  // AI: meeting summary
-  const handleAiSummary = async () => {
+  // AI: extract action items from the existing saved summary — directly create with title only
+  const handleExtractFromSummary = async () => {
+    if (!meeting?.ai_summary) return
     setAiLoading(true)
     try {
-      const res = await aiAPI.meetingSummary({
-        title: meeting.title, date: meeting.date, attendees: meeting.attendees,
-        venue: meeting.venue, duration: meeting.duration, objective: meeting.objective,
-        discussionPoints: meeting.discussion_points,
-        actionItems: actions.map(a => ({ title: a.title, assigned_to_name: a.assigned_to_name, due_date: a.due_date }))
-      })
-      setAiSummary(res.summary)
-      // Save to meeting
-      await meetingsAPI.update(meeting.id, { ...meeting, discussionPoints: meeting.discussion_points, aiSummary: res.summary })
-      setMeeting(m => ({ ...m, ai_summary: res.summary }))
-      setShowSummaryModal(true)
-    } catch (err) { alert(err.message) }
-    setAiLoading(false)
-  }
-
-  // AI: generate summary from notes in AI modal
-  const handleAiSummaryFromNotes = async (notes) => {
-    if (!notes.trim()) return
-    setAiLoading(true)
-    try {
-      const res = await aiAPI.meetingSummary({
-        title: meeting.title, date: meeting.date, attendees: meeting.attendees,
-        venue: meeting.venue, duration: meeting.duration, objective: meeting.objective,
-        discussionPoints: notes,
-        actionItems: actions.map(a => ({ title: a.title, assigned_to_name: a.assigned_to_name, due_date: a.due_date }))
-      })
-      setAiSummary(res.summary)
-      await meetingsAPI.update(meeting.id, { ...meeting, discussionPoints: notes, aiSummary: res.summary })
-      setMeeting(m => ({ ...m, discussion_points: notes, ai_summary: res.summary }))
-      setShowAiModal(false)
-      setShowSummaryModal(true)
+      const res = await aiAPI.extractFromSummary({ summary: meeting.ai_summary, attendees: meeting?.attendees })
+      for (const item of res.items) {
+        if (item.title?.trim()) {
+          await actionItemsAPI.create({
+            meetingId: meeting.id,
+            projectId: meeting.project_id,
+            clientId: meeting.client_id,
+            title: item.title,
+            assignedTo: null,
+            assignedToName: '',
+            dueDate: null
+          })
+        }
+      }
+      const actionParams = { meetingId }
+      setActions(await actionItemsAPI.list(actionParams))
     } catch (err) { alert(err.message) }
     setAiLoading(false)
   }
@@ -261,11 +241,9 @@ export default function MeetingDetail() {
           </div>
           <div className="flex items-center gap-2" style={{ flexWrap: 'wrap' }}>
             {isPM && (
-              <>
-                <button className="btn btn-outline btn-sm" onClick={() => setShowAiModal(true)} disabled={aiLoading}>
-                  <Sparkles size={14} />{aiLoading ? 'Processing...' : 'Extract Actions (AI)'}
-                </button>
-              </>
+              <button className="btn btn-outline btn-sm" onClick={() => { setAiNotes(''); setShowAiModal(true) }} disabled={aiLoading}>
+                <Sparkles size={14} />{aiLoading ? 'Processing...' : 'Generate Summary'}
+              </button>
             )}
             <button className="btn btn-outline btn-sm" onClick={exportPDF}><Download size={14} />PDF</button>
           </div>
@@ -281,8 +259,22 @@ export default function MeetingDetail() {
         </div>
         {meeting.ai_summary && (
           <div style={{ marginTop: '1rem', padding: '0.875rem', background: 'var(--bg-card)', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
-            <div className="flex items-center gap-2 mb-2"><Sparkles size={14} style={{ color: 'var(--primary)' }} /><span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--primary)' }}>AI Summary</span></div>
-            <div style={{ fontSize: '0.875rem', whiteSpace: 'pre-wrap', lineHeight: 1.7, color: 'var(--text-main)' }}>{meeting.ai_summary}</div>
+            <div className="flex items-center gap-2 mb-3"><Sparkles size={14} style={{ color: 'var(--primary)' }} /><span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--primary)' }}>AI Summary</span></div>
+            <div style={{ fontSize: '0.875rem', lineHeight: 1.75, color: 'var(--text-main)' }}>
+              {meeting.ai_summary.split('\n').map((line, i) => {
+                const trimmed = line.trim()
+                if (!trimmed) return <div key={i} style={{ height: '0.5rem' }} />
+                // ALL CAPS lines are section headers
+                if (trimmed === trimmed.toUpperCase() && trimmed.length > 2 && !/^\d+\./.test(trimmed)) {
+                  return <div key={i} style={{ fontWeight: 700, fontSize: '0.8125rem', letterSpacing: '0.04em', color: 'var(--primary)', marginTop: i === 0 ? 0 : '1rem', marginBottom: '0.35rem' }}>{trimmed}</div>
+                }
+                // Numbered list lines
+                if (/^\d+\./.test(trimmed)) {
+                  return <div key={i} style={{ paddingLeft: '0.25rem', marginBottom: '0.25rem' }}>{trimmed}</div>
+                }
+                return <div key={i} style={{ marginBottom: '0.25rem' }}>{trimmed}</div>
+              })}
+            </div>
           </div>
         )}
       </div>
@@ -292,8 +284,13 @@ export default function MeetingDetail() {
         <div className="flex items-center justify-between mb-4">
           <h3>Action Items <span style={{ fontSize: '0.875rem', fontWeight: 400, color: 'var(--text-muted)', marginLeft: 4 }}>({actions.length})</span></h3>
           <div className="flex items-center gap-2">
-            {selectedActions.length > 0 && isPM && (
+            {selectedActions.length > 0 && isSuperAdmin && (
               <button className="btn btn-danger-outline btn-sm" onClick={() => setConfirm({ bulk: true })}><Trash2 size={13} />Delete ({selectedActions.length})</button>
+            )}
+            {isPM && meeting?.ai_summary && (
+              <button className="btn btn-outline btn-sm" onClick={handleExtractFromSummary} disabled={aiLoading}>
+                <FileText size={14} />{aiLoading ? 'Extracting...' : 'Extract Action Items'}
+              </button>
             )}
             {isPM && <button className="btn btn-primary btn-sm" onClick={openAddAction}><Plus size={14} />Add Action</button>}
           </div>
@@ -344,7 +341,7 @@ export default function MeetingDetail() {
                       <td style={{ textAlign: 'right' }}>
                         <div className="flex items-center gap-1" style={{ justifyContent: 'flex-end' }}>
                           <button className="btn-ghost" onClick={() => openEditAction(a)}><Edit2 size={14} /></button>
-                          {isPM && <button className="btn-ghost" style={{ color: 'var(--error)' }} onClick={() => setConfirm({ id: a.id, title: a.title })}><Trash2 size={14} /></button>}
+                          {isSuperAdmin && <button className="btn-ghost" style={{ color: 'var(--error)' }} onClick={() => setConfirm({ id: a.id, title: a.title })}><Trash2 size={14} /></button>}
                         </div>
                       </td>
                     </tr>
@@ -403,23 +400,20 @@ export default function MeetingDetail() {
         </Modal>
       )}
 
-      {/* AI Extract Modal */}
+      {/* AI Summary Modal — paste raw notes to generate summary */}
       {showAiModal && (
-        <Modal title="Extract Action Items with AI" onClose={() => setShowAiModal(false)} maxWidth="580px"
-          footer={<><button className="btn btn-outline" onClick={() => setShowAiModal(false)}>Cancel</button><button className="btn btn-outline" onClick={() => handleAiSummaryFromNotes(aiNotes)} disabled={aiLoading || !aiNotes.trim()}>{aiLoading ? <><span className="spinner" />Processing...</> : <><Sparkles size={14} />Generate Summary</>}</button><button className="btn btn-primary" onClick={handleAiExtract} disabled={aiLoading || !aiNotes.trim()}>{aiLoading ? <><span className="spinner" />Processing...</> : <><Sparkles size={14} />Extract & Add</>}</button></>}>
-          <p className="mb-4">Paste your raw meeting notes below. AI will extract action items and add them automatically.</p>
+        <Modal title="Generate Meeting Summary" onClose={() => { setShowAiModal(false); setAiNotes('') }} maxWidth="580px"
+          footer={<>
+            <button className="btn btn-outline" onClick={() => { setShowAiModal(false); setAiNotes('') }}>Cancel</button>
+            <button className="btn btn-primary" onClick={handleGenerateSummary} disabled={aiLoading || !aiNotes.trim()}>
+              {aiLoading ? <><span className="spinner" />Generating...</> : <><Sparkles size={14} />Generate Summary</>}
+            </button>
+          </>}>
+          <p className="mb-4" style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Paste your rough meeting notes below. AI will generate a professional summary and save it to this meeting.</p>
           <div className="form-group">
             <label className="label">Meeting Notes</label>
-            <textarea className="textarea" style={{ minHeight: 160 }} placeholder="Paste your raw meeting notes here..." value={aiNotes} onChange={e => setAiNotes(e.target.value)} autoFocus />
+            <textarea className="textarea" style={{ minHeight: 180 }} placeholder="Paste your raw meeting notes here..." value={aiNotes} onChange={e => setAiNotes(e.target.value)} autoFocus />
           </div>
-        </Modal>
-      )}
-
-      {/* AI Summary Modal */}
-      {showSummaryModal && (
-        <Modal title="AI Meeting Summary" onClose={() => setShowSummaryModal(false)} maxWidth="600px"
-          footer={<button className="btn btn-primary" onClick={() => setShowSummaryModal(false)}>Done</button>}>
-          <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.8, fontSize: '0.9375rem' }}>{aiSummary}</div>
         </Modal>
       )}
 

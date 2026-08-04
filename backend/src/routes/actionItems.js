@@ -8,6 +8,7 @@ const { createNotification } = require('../middleware/notify')
 // GET /api/action-items?meetingId=xxx
 router.get('/', verifyToken, async (req, res) => {
   const { meetingId, projectId, assignedTo } = req.query
+  const isMember = req.user.role === 'member'
   try {
     let q = `SELECT a.*, u.full_name as assigned_to_full_name, u2.full_name as created_by_name
              FROM action_items a
@@ -18,7 +19,12 @@ router.get('/', verifyToken, async (req, res) => {
     let idx = 2
     if (meetingId) { q += ` AND a.meeting_id = $${idx++}`; params.push(meetingId) }
     if (projectId) { q += ` AND a.project_id = $${idx++}`; params.push(projectId) }
-    if (assignedTo) { q += ` AND a.assigned_to = $${idx++}`; params.push(assignedTo) }
+    // Members always see only their own assigned items, regardless of other filters
+    if (isMember) {
+      q += ` AND a.assigned_to = $${idx++}`; params.push(req.user.id)
+    } else if (assignedTo) {
+      q += ` AND a.assigned_to = $${idx++}`; params.push(assignedTo)
+    }
     q += ` ORDER BY a.created_at ASC`
     const result = await query(q, params)
     res.json(result.rows)

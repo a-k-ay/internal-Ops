@@ -1,7 +1,7 @@
 const express = require('express')
 const router = express.Router()
 const { query } = require('../db')
-const { verifyToken, requirePMOrAbove } = require('../middleware/auth')
+const { verifyToken, requirePMOrAbove, requireSuperAdmin } = require('../middleware/auth')
 const { auditLog } = require('../middleware/audit')
 const { createNotification } = require('../middleware/notify')
 
@@ -95,7 +95,7 @@ router.put('/:id', verifyToken, requirePMOrAbove, async (req, res) => {
 })
 
 // DELETE /api/meetings/:id
-router.delete('/:id', verifyToken, requirePMOrAbove, async (req, res) => {
+router.delete('/:id', verifyToken, requireSuperAdmin, async (req, res) => {
   try {
     const mtg = await query(`SELECT title FROM meetings WHERE id = $1 AND workspace_id = $2`, [req.params.id, req.user.workspaceId])
     if (!mtg.rows[0]) return res.status(404).json({ error: 'Meeting not found' })

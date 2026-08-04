@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { clientsAPI, projectsAPI, meetingsAPI } from '../api/client'
 import { useAuth } from '../context/AuthContext'
-import { Plus, Calendar, ChevronRight, ChevronLeft, Edit2, Trash2, Search, Filter, FolderOpen } from 'lucide-react'
+import { Plus, Calendar, ChevronRight, ChevronLeft, Edit2, Trash2, Search, Filter, FolderOpen, Archive } from 'lucide-react'
 import Modal from '../components/Modal'
 import ConfirmDialog from '../components/ConfirmDialog'
 import Spinner from '../components/Spinner'
@@ -13,7 +13,7 @@ const EMPTY_MTG = { title: '', date: format(new Date(), 'yyyy-MM-dd'), attendees
 const EMPTY_PROJ = { name: '', description: '' }
 
 export default function Meetings() {
-  const { isPM } = useAuth()
+  const { isPM, isSuperAdmin } = useAuth()
   const navigate = useNavigate()
   const [step, setStep] = useState('clients') // clients | projects | meetings
   const [clients, setClients] = useState([])
@@ -39,10 +39,11 @@ export default function Meetings() {
   const [attendeePills, setAttendeePills] = useState([])
 
   useEffect(() => {
-    clientsAPI.list().then(setClients).catch(console.error).finally(() => setLoading(false))
+    clientsAPI.list(true).then(setClients).catch(console.error).finally(() => setLoading(false))
   }, [])
 
   const selectClient = async (c) => {
+    if (c.is_archived) return
     setSelectedClient(c); setStep('projects'); setLoading(true)
     try { setProjects(await projectsAPI.list(c.id)) } catch {}
     setLoading(false)
@@ -82,12 +83,19 @@ export default function Meetings() {
     setSaving(false)
   }
   const deleteMtg = async (id) => {
-    try { await meetingsAPI.delete(id); setMeetings(m => m.filter(x => x.id !== id)) } catch {}
+    try { await meetingsAPI.delete(id); setMeetings(m => m.filter(x => x.id !== id)) } catch (err) { alert(err.message) }
     setConfirm(null)
   }
 
   // Project CRUD
   const openAddProj = () => { setEditProj(null); setProjForm(EMPTY_PROJ); setError(''); setShowProjModal(true) }
+  const deleteProj = async (id) => {
+    try {
+      await projectsAPI.delete(id)
+      setProjects(ps => ps.filter(p => p.id !== id))
+    } catch (err) { alert(err.message) }
+    setConfirm(null)
+  }
   const saveProj = async (e) => {
     e.preventDefault(); setError(''); setSaving(true)
     try {
@@ -133,13 +141,22 @@ export default function Meetings() {
           ) : (
             <div className="grid-auto">
               {clients.map(c => (
-                <div key={c.id} className="card card-hover" style={{ cursor: 'pointer' }} onClick={() => selectClient(c)}>
+                <div key={c.id} className={`card${c.is_archived ? '' : ' card-hover'}`}
+                  style={{ cursor: c.is_archived ? 'not-allowed' : 'pointer', opacity: c.is_archived ? 0.65 : 1 }}
+                  onClick={() => selectClient(c)}>
                   <div className="flex items-center justify-between">
-                    <div>
-                      <h4>{c.name}</h4>
+                    <div style={{ minWidth: 0 }}>
+                      <div className="flex items-center gap-2">
+                        <h4 className="truncate">{c.name}</h4>
+                        {c.is_archived && (
+                          <span className="flex items-center gap-1" style={{ fontSize: '0.7rem', color: 'var(--text-muted)', background: 'var(--bg-muted, #f1f1f1)', borderRadius: 4, padding: '0.1rem 0.4rem', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                            <Archive size={10} />archived
+                          </span>
+                        )}
+                      </div>
                       <p style={{ fontSize: '0.75rem', marginTop: 4 }}>{c.project_count} project{c.project_count !== 1 ? 's' : ''}</p>
                     </div>
-                    <ChevronRight size={18} style={{ color: 'var(--text-muted)' }} />
+                    {!c.is_archived && <ChevronRight size={18} style={{ color: 'var(--text-muted)' }} />}
                   </div>
                 </div>
               ))}
@@ -172,6 +189,7 @@ export default function Meetings() {
                     </div>
                     <div className="flex items-center gap-1">
                       {isPM && <button className="btn-ghost" onClick={e => { e.stopPropagation(); setEditProj(p); setProjForm({ name: p.name, description: p.description || '' }); setShowProjModal(true) }}><Edit2 size={14} /></button>}
+                      {isSuperAdmin && <button className="btn-ghost" style={{ color: 'var(--error)' }} onClick={e => { e.stopPropagation(); setConfirm({ projId: p.id, projName: p.name }) }}><Trash2 size={14} /></button>}
                       <ChevronRight size={16} style={{ color: 'var(--text-muted)' }} />
                     </div>
                   </div>
@@ -195,7 +213,7 @@ export default function Meetings() {
               <p>{filteredMtgs.length} meeting{filteredMtgs.length !== 1 ? 's' : ''}</p>
             </div>
             <div className="flex items-center gap-2">
-              {selectedMtgs.length > 0 && isPM && (
+              {selectedMtgs.length > 0 && isSuperAdmin && (
                 <button className="btn btn-danger-outline btn-sm" onClick={() => setConfirm({ bulk: true })}>
                   <Trash2 size={14} />Delete ({selectedMtgs.length})
                 </button>
@@ -224,7 +242,7 @@ export default function Meetings() {
               action={isPM && !search ? <button className="btn btn-primary" onClick={openAddMtg}><Plus size={16} />New Meeting</button> : null} />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
-              {isPM && (
+              {isSuperAdmin && (
                 <div className="flex items-center gap-2 mb-1">
                   <input type="checkbox" checked={selectedMtgs.length === filteredMtgs.length && filteredMtgs.length > 0}
                     onChange={e => setSelectedMtgs(e.target.checked ? filteredMtgs.map(m => m.id) : [])} />
@@ -236,7 +254,7 @@ export default function Meetings() {
                   onMouseEnter={e => e.currentTarget.style.boxShadow = 'var(--shadow-md)'}
                   onMouseLeave={e => e.currentTarget.style.boxShadow = ''}>
                   <div className="flex items-center gap-3">
-                    {isPM && (
+                    {isSuperAdmin && (
                       <input type="checkbox" checked={selectedMtgs.includes(m.id)}
                         onChange={e => { e.stopPropagation(); setSelectedMtgs(s => e.target.checked ? [...s, m.id] : s.filter(x => x !== m.id)) }}
                         onClick={e => e.stopPropagation()} />
@@ -250,10 +268,10 @@ export default function Meetings() {
                         <div className="flex items-center gap-2">
                           <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{format(parseISO(m.date), 'MMM d, yyyy')}</span>
                           {isPM && (
-                            <>
-                              <button className="btn-ghost" onClick={e => { e.stopPropagation(); openEditMtg(m) }}><Edit2 size={14} /></button>
-                              <button className="btn-ghost" style={{ color: 'var(--error)' }} onClick={e => { e.stopPropagation(); setConfirm({ id: m.id, title: m.title }) }}><Trash2 size={14} /></button>
-                            </>
+                            <button className="btn-ghost" onClick={e => { e.stopPropagation(); openEditMtg(m) }}><Edit2 size={14} /></button>
+                          )}
+                          {isSuperAdmin && (
+                            <button className="btn-ghost" style={{ color: 'var(--error)' }} onClick={e => { e.stopPropagation(); setConfirm({ id: m.id, title: m.title }) }}><Trash2 size={14} /></button>
                           )}
                           <ChevronRight size={16} style={{ color: 'var(--text-muted)' }} />
                         </div>
@@ -326,7 +344,7 @@ export default function Meetings() {
         </Modal>
       )}
 
-      {confirm && !confirm.bulk && (
+      {confirm && !confirm.bulk && !confirm.projId && (
         <ConfirmDialog title="Delete Meeting" message={`Delete "${confirm.title}"? All action items will be removed.`}
           onConfirm={() => deleteMtg(confirm.id)} onCancel={() => setConfirm(null)} />
       )}
@@ -334,6 +352,10 @@ export default function Meetings() {
         <ConfirmDialog title="Delete Meetings" message={`Delete ${selectedMtgs.length} meeting(s)? This cannot be undone.`}
           onConfirm={async () => { for (const id of selectedMtgs) await meetingsAPI.delete(id).catch(() => {}); setMeetings(m => m.filter(x => !selectedMtgs.includes(x.id))); setSelectedMtgs([]); setConfirm(null) }}
           onCancel={() => setConfirm(null)} />
+      )}
+      {confirm?.projId && (
+        <ConfirmDialog title="Delete Project" message={`Delete "${confirm.projName}"? All meetings and tracker items inside will be permanently removed.`}
+          onConfirm={() => deleteProj(confirm.projId)} onCancel={() => setConfirm(null)} />
       )}
     </div>
   )
