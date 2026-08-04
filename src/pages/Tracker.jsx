@@ -67,12 +67,17 @@ export default function Tracker() {
   }
 
   const openAdd = () => { setEditItem(null); setForm(EMPTY_FORM); setError(''); setShowModal(true) }
+  const toDateInput = (d) => {
+    if (!d) return ''
+    return typeof d === 'string' ? d.slice(0, 10) : format(new Date(d), 'yyyy-MM-dd')
+  }
+
   const openEdit = (item) => {
     setEditItem(item)
     setForm({
       description: item.description, classification: item.classification, status: item.status,
-      raisedDate: item.raised_date || '', devStartDate: item.dev_start_date || '',
-      deployedDate: item.deployed_date || '', raisedBy: item.raised_by || '', remarks: item.remarks || ''
+      raisedDate: toDateInput(item.raised_date), devStartDate: toDateInput(item.dev_start_date),
+      deployedDate: toDateInput(item.deployed_date), raisedBy: item.raised_by || '', remarks: item.remarks || ''
     })
     setError(''); setShowModal(true)
   }
@@ -428,8 +433,26 @@ export default function Tracker() {
             </div>
             <div className="grid-3">
               {/* <div className="form-group"><label className="label">Raised On</label><input type="date" className="input" value={form.raisedDate} onChange={setF('raisedDate')} /></div> */}
-              <div className="form-group"><label className="label">Dev Start Date</label><input type="date" className="input" value={form.devStartDate} onChange={setF('devStartDate')} /></div>
-              <div className="form-group"><label className="label">Deployed On</label><input type="date" className="input" value={form.deployedDate} onChange={setF('deployedDate')} /></div>
+              <div className="form-group"><label className="label">Dev Start Date</label>
+                <input
+                  type="date"
+                  className="input"
+                  value={form.devStartDate}
+                  onChange={setF('devStartDate')}
+                  disabled={!(isMember || isSuperAdmin)}
+                  style={{ opacity: (isMember || isSuperAdmin) ? 1 : 0.5 }}
+                />
+              </div>
+              <div className="form-group"><label className="label">Deployed On</label>
+                <input
+                  type="date"
+                  className="input"
+                  value={form.deployedDate}
+                  onChange={setF('deployedDate')}
+                  disabled={!(isMember || isSuperAdmin)}
+                  style={{ opacity: (isMember || isSuperAdmin) ? 1 : 0.5 }}
+                />
+              </div>
             </div>
             <div className="form-group"><label className="label">Remarks</label><textarea className="textarea" style={{ minHeight: 60 }} value={form.remarks} onChange={setF('remarks')} /></div>
           </form>

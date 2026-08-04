@@ -325,8 +325,8 @@ export default function MeetingDetail() {
                         </select>
                         {effStatus === 'delayed' && <span className="badge badge-delayed" style={{ marginLeft: 4 }}>Delayed</span>}
                       </td>
-                      <td style={{ fontWeight: 500, maxWidth: 280 }}>
-                        <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.title}</span>
+                      <td style={{ fontWeight: 500, maxWidth: 360, whiteSpace: 'normal', wordBreak: 'break-word' }}>
+                        {a.title}
                       </td>
                       <td style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{a.assigned_to_name || '—'}</td>
                       <td style={{ fontSize: '0.875rem', color: a.due_date && isPast(new Date(a.due_date + 'T23:59:59')) && a.status !== 'closed' ? 'var(--error)' : 'var(--text-muted)' }}>

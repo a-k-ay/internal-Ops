@@ -76,8 +76,12 @@ router.put('/profile/me', verifyToken, async (req, res) => {
 
 // PUT /api/users/:id - update user
 router.put('/:id', verifyToken, requireSuperAdmin, async (req, res) => {
-  const { fullName, role, password } = req.body
+  const { fullName, username, role, password } = req.body
   const userId = req.params.id
+
+  if (!username || !username.trim()) {
+    return res.status(400).json({ error: 'Username is required' })
+  }
 
   try {
     // Cannot change own role
@@ -85,16 +89,18 @@ router.put('/:id', verifyToken, requireSuperAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Cannot change your own role' })
     }
 
+    const normalizedUsername = username.trim().toLowerCase()
+
     let updateQuery, updateParams
     if (password && password.length >= 6) {
       const passwordHash = await bcrypt.hash(password, 12)
-      updateQuery = `UPDATE users SET full_name = $1, role = $2, password_hash = $3, updated_at = NOW()
-                     WHERE id = $4 AND workspace_id = $5 RETURNING id, username, full_name, role, is_active`
-      updateParams = [fullName, role, passwordHash, userId, req.user.workspaceId]
+      updateQuery = `UPDATE users SET full_name = $1, username = $2, role = $3, password_hash = $4, updated_at = NOW()
+                     WHERE id = $5 AND workspace_id = $6 RETURNING id, username, full_name, role, is_active`
+      updateParams = [fullName, normalizedUsername, role, passwordHash, userId, req.user.workspaceId]
     } else {
-      updateQuery = `UPDATE users SET full_name = $1, role = $2, updated_at = NOW()
-                     WHERE id = $3 AND workspace_id = $4 RETURNING id, username, full_name, role, is_active`
-      updateParams = [fullName, role, userId, req.user.workspaceId]
+      updateQuery = `UPDATE users SET full_name = $1, username = $2, role = $3, updated_at = NOW()
+                     WHERE id = $4 AND workspace_id = $5 RETURNING id, username, full_name, role, is_active`
+      updateParams = [fullName, normalizedUsername, role, userId, req.user.workspaceId]
     }
 
     const result = await query(updateQuery, updateParams)
@@ -102,6 +108,7 @@ router.put('/:id', verifyToken, requireSuperAdmin, async (req, res) => {
     await auditLog({ workspaceId: req.user.workspaceId, userId: req.user.id, userName: req.user.fullName, action: 'update', entityType: 'user', entityId: userId, entityName: fullName })
     res.json(result.rows[0])
   } catch (err) {
+    if (err.code === '23505') return res.status(409).json({ error: 'Username already exists' })
     res.status(500).json({ error: 'Failed to update user' })
   }
 })

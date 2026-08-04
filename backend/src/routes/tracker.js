@@ -87,13 +87,17 @@ router.put('/:id', verifyToken, async (req, res) => {
     if (!existing.rows[0]) return res.status(404).json({ error: 'Tracker item not found' })
     const item = existing.rows[0]
 
+    // For date fields, respect explicit null so the client can clear them.
+    // Falls back to existing value only when the key is not present in the payload.
+    const pick = (key, current) => (key in req.body ? req.body[key] : current)
+
     const result = await query(
       `UPDATE tracker_items SET description = $1, classification = $2, status = $3,
               raised_date = $4, dev_start_date = $5, deployed_date = $6,
               raised_by = $7, remarks = $8, updated_at = NOW()
        WHERE id = $9 AND workspace_id = $10 RETURNING *`,
       [description || item.description, classification || item.classification, status || item.status,
-       raisedDate || item.raised_date, devStartDate || item.dev_start_date, deployedDate || item.deployed_date,
+       pick('raisedDate', item.raised_date), pick('devStartDate', item.dev_start_date), pick('deployedDate', item.deployed_date),
        raisedBy || item.raised_by, remarks || item.remarks, req.params.id, req.user.workspaceId]
     )
 

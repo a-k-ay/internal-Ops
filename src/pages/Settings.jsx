@@ -124,7 +124,7 @@ function UsersTab({ isSuperAdmin }) {
   const save = async (e) => {
     e.preventDefault(); setError(''); setSaving(true)
     try {
-      if (editUser) await usersAPI.update(editUser.id, { fullName: form.fullName, role: form.role, password: form.password || undefined })
+      if (editUser) await usersAPI.update(editUser.id, { fullName: form.fullName, username: form.username, role: form.role, password: form.password || undefined })
       else await usersAPI.create(form)
       setShowModal(false); load()
     } catch (err) { setError(err.message) }
@@ -180,7 +180,7 @@ function UsersTab({ isSuperAdmin }) {
           {error && <div className="alert alert-error mb-4">{error}</div>}
           <form onSubmit={save} style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
             <div className="form-group"><label className="label">Full Name *</label><input className="input" value={form.fullName} onChange={setF('fullName')} required autoFocus /></div>
-            {!editUser && <div className="form-group"><label className="label">Username *</label><input className="input" value={form.username} onChange={setF('username')} required /></div>}
+            <div className="form-group"><label className="label">Username *</label><input className="input" value={form.username} onChange={setF('username')} required /></div>
             <div className="form-group"><label className="label">{editUser ? 'New Password (leave blank to keep)' : 'Password *'}</label><input className="input" type="password" value={form.password} onChange={setF('password')} required={!editUser} /></div>
             <div className="form-group">
               <label className="label">Role</label>

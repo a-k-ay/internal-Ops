@@ -121,17 +121,17 @@ export default function Clients() {
                 {c.industry && <span style={{ fontSize: '0.75rem', fontStyle: 'italic' }}>{c.industry}</span>}
               </div>
 
-              {isSuperAdmin && (
+              {isPM && (
                 <div className="flex gap-2" style={{ borderTop: '1px solid var(--border)', paddingTop: '0.75rem', marginTop: '0.25rem' }}>
                   <button className="btn btn-outline btn-sm flex-1" onClick={() => openEdit(c)}><Edit2 size={13} />Edit</button>
-                  {c.is_archived ? (
+                  {isSuperAdmin && (c.is_archived ? (
                     <>
                       <button className="btn btn-outline btn-sm flex-1" onClick={() => handleRestore(c.id)}><RotateCcw size={13} />Restore</button>
                       <button className="btn btn-outline btn-sm" style={{ color: 'var(--error)' }} onClick={() => setConfirm({ type: 'delete', client: c })}><Trash2 size={13} /></button>
                     </>
                   ) : (
                     <button className="btn btn-outline btn-sm flex-1" style={{ color: 'var(--warning)' }} onClick={() => setConfirm({ type: 'archive', client: c })}><Archive size={13} />Archive</button>
-                  )}
+                  ))}
                 </div>
               )}
             </div>
