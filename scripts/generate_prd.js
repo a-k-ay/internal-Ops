@@ -1,5 +1,5 @@
 import fs from 'fs';
-import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from 'docx';
+import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
 
 const prdFile = 'C:/Users/Admin/.gemini/antigravity/brain/23f743a4-9fe6-4585-97f4-a349615e7337/PRD.md';
 const outputFile = './Project_Requirements_Document.docx';

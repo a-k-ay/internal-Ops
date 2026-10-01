@@ -15,7 +15,7 @@ const EMPTY_FORM = { description: '', classification: 'issue', status: 'pending'
 
 export default function Tracker() {
   const { isPM, user, isMember, isSuperAdmin } = useAuth()
-  const [searchParams, setSearchParams] = useSearchParams()
+  const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const flatMode = searchParams.get('view') === 'all'
   const [step, setStep] = useState(flatMode ? 'tracker' : 'clients')

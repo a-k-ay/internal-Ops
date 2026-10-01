@@ -86,7 +86,8 @@ router.post('/', verifyToken, requirePMOrAbove, async (req, res) => {
 // PM/admin only — members shouldn't touch the tracker directly; their
 // action-item status changes propagate here via the one-way sync.
 router.put('/:id', verifyToken, requirePMOrAbove, async (req, res) => {
-  const { description, classification, status, raisedDate, devStartDate, deployedDate, raisedBy, remarks } = req.body
+  // date fields are read from req.body directly via pick() below
+  const { description, classification, status, raisedBy, remarks } = req.body
   try {
     const existing = await query(`SELECT * FROM tracker_items WHERE id = $1 AND workspace_id = $2`, [req.params.id, req.user.workspaceId])
     if (!existing.rows[0]) return res.status(404).json({ error: 'Tracker item not found' })

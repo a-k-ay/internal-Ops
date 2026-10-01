@@ -10,7 +10,7 @@ import {
 import { format } from 'date-fns'
 
 export default function AppLayout() {
-  const { user, logout, isSuperAdmin, isMember } = useAuth()
+  const { user, logout, isMember } = useAuth()
   const navigate = useNavigate()
   const [theme, setTheme] = useState(() => localStorage.getItem('mab_theme') || 'light')
   const [unreadCount, setUnreadCount] = useState(0)
@@ -142,10 +142,10 @@ export default function AppLayout() {
                     {!searching && searchResults && totalResults === 0 && <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem' }}>No results found</div>}
                     {!searching && searchResults && (
                       <>
-                        {searchResults.clients?.length > 0 && <SearchGroup label="Clients" items={searchResults.clients} renderItem={i => i.name} onClick={i => { navigate(`/clients`); setShowSearch(false); setSearchQ(''); setSearchResults(null) }} />}
+                        {searchResults.clients?.length > 0 && <SearchGroup label="Clients" items={searchResults.clients} renderItem={i => i.name} onClick={() => { navigate(`/clients`); setShowSearch(false); setSearchQ(''); setSearchResults(null) }} />}
                         {searchResults.meetings?.length > 0 && <SearchGroup label="Meetings" items={searchResults.meetings} renderItem={i => `${i.title} — ${i.client_name}`} onClick={i => { navigate(`/meetings/${i.id}`); setShowSearch(false); setSearchQ(''); setSearchResults(null) }} />}
-                        {searchResults.actionItems?.length > 0 && <SearchGroup label="Action Items" items={searchResults.actionItems} renderItem={i => i.title} onClick={i => { setShowSearch(false); setSearchQ(''); setSearchResults(null) }} />}
-                        {searchResults.trackerItems?.length > 0 && <SearchGroup label="Tracker" items={searchResults.trackerItems} renderItem={i => i.description} onClick={i => { navigate(`/tracker`); setShowSearch(false); setSearchQ(''); setSearchResults(null) }} />}
+                        {searchResults.actionItems?.length > 0 && <SearchGroup label="Action Items" items={searchResults.actionItems} renderItem={i => i.title} onClick={() => { setShowSearch(false); setSearchQ(''); setSearchResults(null) }} />}
+                        {searchResults.trackerItems?.length > 0 && <SearchGroup label="Tracker" items={searchResults.trackerItems} renderItem={i => i.description} onClick={() => { navigate(`/tracker`); setShowSearch(false); setSearchQ(''); setSearchResults(null) }} />}
                       </>
                     )}
                   </div>

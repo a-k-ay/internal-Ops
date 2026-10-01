@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { dashboardAPI } from '../api/client'
 import { Building2, CheckSquare, AlertTriangle, TrendingUp, Clock, ChevronDown, Calendar, Target, PieChart, Layers, FolderOpen, Users, Search } from 'lucide-react'
 import Spinner from '../components/Spinner'
-import { format, parseISO, isToday, isThisWeek, isPast, addDays, differenceInCalendarDays } from 'date-fns'
+import { format, parseISO, isToday, isPast, differenceInCalendarDays } from 'date-fns'
 import Badge from '../components/Badge'
 
 /* ---------------- Reusable UI bits ---------------- */
@@ -84,7 +84,6 @@ function Donut({ segments, size = 140 }) {
       <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--bg-sidebar)" strokeWidth={stroke} />
       {segments.map((seg, i) => {
         const len = (seg.value / total) * c
-        const dashoffset = c - len
         const el = (
           <circle key={i} cx={size / 2} cy={size / 2} r={r} fill="none"
             stroke={seg.color} strokeWidth={stroke}

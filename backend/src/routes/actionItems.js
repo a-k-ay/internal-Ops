@@ -61,7 +61,8 @@ router.post('/', verifyToken, requirePMOrAbove, async (req, res) => {
 
 // PUT /api/action-items/:id
 router.put('/:id', verifyToken, async (req, res) => {
-  const { title, assignedTo, assignedToName, dueDate, status } = req.body
+  // non-status fields are read from req.body directly via pick() below
+  const { title, status } = req.body
   try {
     // Fetch existing item
     const existing = await query(`SELECT * FROM action_items WHERE id = $1 AND workspace_id = $2`, [req.params.id, req.user.workspaceId])

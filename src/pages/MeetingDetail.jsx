@@ -16,7 +16,7 @@ const EMPTY_ACTION = { title: '', assignedTo: '', assignedToName: '', dueDate: '
 
 export default function MeetingDetail() {
   const { meetingId } = useParams()
-  const { isPM, user, isMember, isSuperAdmin } = useAuth()
+  const { isPM, isSuperAdmin } = useAuth()
   const navigate = useNavigate()
 
   const [meeting, setMeeting] = useState(null)
