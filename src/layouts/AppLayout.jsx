@@ -28,6 +28,14 @@ export default function AppLayout() {
     localStorage.setItem('mab_theme', theme)
   }, [theme])
 
+  // Reflect the current workspace in the browser tab so a user with two
+  // workspaces open in two tabs can tell them apart at a glance.
+  useEffect(() => {
+    const base = 'Meeting Action Board'
+    document.title = user?.workspaceName ? `${base} — ${user.workspaceName}` : base
+    return () => { document.title = base }
+  }, [user?.workspaceName])
+
   // Close the mobile drawer whenever the route changes so a NavLink click
   // doesn't leave the user staring at the drawer on the next screen.
   useEffect(() => { setDrawerOpen(false) }, [location.pathname])
