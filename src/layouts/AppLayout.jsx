@@ -33,7 +33,7 @@ export default function AppLayout() {
   }, [])
 
   const fetchUnread = async () => {
-    try { const d = await notificationsAPI.unreadCount(); setUnreadCount(d.count) } catch {}
+    try { const d = await notificationsAPI.unreadCount(); setUnreadCount(d.count) } catch { /* ignore: polling unread count (every 30s) — don't let a network hiccup break the shell */ }
   }
 
   const handleLogout = async () => { await logout(); navigate('/login') }
@@ -44,7 +44,7 @@ export default function AppLayout() {
     if (!val.trim() || val.length < 2) { setSearchResults(null); return }
     searchTimer.current = setTimeout(async () => {
       setSearching(true)
-      try { const r = await searchAPI.global(val); setSearchResults(r) } catch {}
+      try { const r = await searchAPI.global(val); setSearchResults(r) } catch { /* ignore: global search debounce — on failure show no results silently */ }
       setSearching(false)
     }, 350)
   }

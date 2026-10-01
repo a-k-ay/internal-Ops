@@ -57,13 +57,13 @@ export default function Meetings() {
   const selectClient = async (c) => {
     if (c.is_archived) return
     setSelectedClient(c); setStep('projects'); setLoading(true)
-    try { setProjects(await projectsAPI.list(c.id)) } catch {}
+    try { setProjects(await projectsAPI.list(c.id)) } catch (err) { console.warn('[Meetings.loadProjects]', err) }
     setLoading(false)
   }
 
   const selectProject = async (p) => {
     setSelectedProject(p); setStep('meetings'); setLoading(true)
-    try { setMeetings(await meetingsAPI.list({ projectId: p.id })) } catch {}
+    try { setMeetings(await meetingsAPI.list({ projectId: p.id })) } catch (err) { console.warn('[Meetings.loadMeetings]', err) }
     setLoading(false)
   }
 

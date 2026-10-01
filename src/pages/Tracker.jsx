@@ -60,13 +60,13 @@ export default function Tracker() {
     try {
       const memberId = isMember ? user?.id : null
       setProjects(await projectsAPI.list(c.id, memberId))
-    } catch {}
+    } catch (err) { console.warn('[Tracker.loadClients]', err) }
     setLoading(false)
   }
 
   const selectProject = async (p) => {
     setSelectedProject(p); setStep('tracker'); setLoading(true)
-    try { setItems(await trackerAPI.list({ projectId: p.id })) } catch {}
+    try { setItems(await trackerAPI.list({ projectId: p.id })) } catch (err) { console.warn('[Tracker.loadProjects]', err) }
     setLoading(false)
   }
 
@@ -126,7 +126,7 @@ export default function Tracker() {
   }
 
   const updateStatus = async (id, status) => {
-    try { await trackerAPI.update(id, { status }); setItems(i => i.map(x => x.id === id ? { ...x, status } : x)) } catch {}
+    try { await trackerAPI.update(id, { status }); setItems(i => i.map(x => x.id === id ? { ...x, status } : x)) } catch (err) { console.warn('[Tracker.updateStatus]', err) }
   }
 
   const setF = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }))

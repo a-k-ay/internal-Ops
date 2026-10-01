@@ -25,7 +25,7 @@ export default function Clients() {
 
   const load = async () => {
     setLoading(true)
-    try { setClients(await clientsAPI.list(showArchived)) } catch {}
+    try { setClients(await clientsAPI.list(showArchived)) } catch (err) { console.warn('[Clients.load]', err) }
     setLoading(false)
   }
 
@@ -49,17 +49,17 @@ export default function Clients() {
   }
 
   const handleArchive = async (c) => {
-    try { await clientsAPI.archive(c.id); load() } catch {}
+    try { await clientsAPI.archive(c.id); load() } catch (err) { console.warn('[Clients.archive]', err) }
     setConfirm(null)
   }
 
   const handleDelete = async (id) => {
-    try { await clientsAPI.delete(id); load() } catch {}
+    try { await clientsAPI.delete(id); load() } catch (err) { console.warn('[Clients.restore]', err) }
     setConfirm(null)
   }
 
   const handleRestore = async (id) => {
-    try { await clientsAPI.restore(id); load() } catch {}
+    try { await clientsAPI.restore(id); load() } catch (err) { console.warn('[Clients.delete]', err) }
   }
 
   const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }))

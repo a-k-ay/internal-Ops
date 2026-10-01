@@ -115,7 +115,7 @@ function UsersTab({ isSuperAdmin }) {
   const [error, setError] = useState('')
   const [confirm, setConfirm] = useState(null)
 
-  const load = async () => { setLoading(true); try { setUsers(await usersAPI.list()) } catch {} setLoading(false) }
+  const load = async () => { setLoading(true); try { setUsers(await usersAPI.list()) } catch (err) { console.warn('[Settings.loadUsers]', err) } setLoading(false) }
   useEffect(() => { load() }, [])
 
   const openAdd = () => { setEditUser(null); setForm({ fullName: '', username: '', password: '', role: 'member' }); setError(''); setShowModal(true) }
@@ -202,11 +202,11 @@ function NotificationsTab() {
   const [notifs, setNotifs] = useState([])
   const [loading, setLoading] = useState(true)
 
-  const load = async () => { setLoading(true); try { setNotifs(await notificationsAPI.list()) } catch {} setLoading(false) }
+  const load = async () => { setLoading(true); try { setNotifs(await notificationsAPI.list()) } catch (err) { console.warn('[Settings.loadNotifications]', err) } setLoading(false) }
   useEffect(() => { load() }, [])
 
-  const markRead = async (id) => { try { await notificationsAPI.markRead(id); setNotifs(n => n.map(x => x.id === id ? { ...x, is_read: true } : x)) } catch {} }
-  const markAll = async () => { try { await notificationsAPI.markAllRead(); setNotifs(n => n.map(x => ({ ...x, is_read: true }))) } catch {} }
+  const markRead = async (id) => { try { await notificationsAPI.markRead(id); setNotifs(n => n.map(x => x.id === id ? { ...x, is_read: true } : x)) } catch (err) { console.warn('[Settings.markRead]', err) } }
+  const markAll = async () => { try { await notificationsAPI.markAllRead(); setNotifs(n => n.map(x => ({ ...x, is_read: true }))) } catch (err) { console.warn('[Settings.markAllRead]', err) } }
 
   const unread = notifs.filter(n => !n.is_read).length
 

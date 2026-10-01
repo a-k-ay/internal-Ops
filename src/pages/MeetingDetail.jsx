@@ -86,16 +86,16 @@ export default function MeetingDetail() {
     try {
       await actionItemsAPI.update(id, { status })
       setActions(a => a.map(x => x.id === id ? { ...x, status } : x))
-    } catch {}
+    } catch (err) { console.warn('[MeetingDetail.loadMeeting]', err) }
   }
 
   const deleteAction = async (id) => {
-    try { await actionItemsAPI.delete(id); setActions(a => a.filter(x => x.id !== id)) } catch {}
+    try { await actionItemsAPI.delete(id); setActions(a => a.filter(x => x.id !== id)) } catch (err) { console.warn('[MeetingDetail.loadActions]', err) }
     setConfirm(null)
   }
 
   const bulkDelete = async () => {
-    try { await actionItemsAPI.bulkDelete(selectedActions); setActions(a => a.filter(x => !selectedActions.includes(x.id))); setSelectedActions([]) } catch {}
+    try { await actionItemsAPI.bulkDelete(selectedActions); setActions(a => a.filter(x => !selectedActions.includes(x.id))); setSelectedActions([]) } catch (err) { console.warn('[MeetingDetail.updateStatus]', err) }
     setConfirm(null)
   }
 

@@ -33,7 +33,7 @@ export function AuthProvider({ children }) {
           }).finally(() => setLoading(false))
           return
         }
-      } catch {}
+      } catch { /* ignore: malformed stored session; fall through to clear it */ }
     }
     setLoading(false)
   }, [])
@@ -51,7 +51,7 @@ export function AuthProvider({ children }) {
   }, [])
 
   const logout = useCallback(async () => {
-    try { await authAPI.logout() } catch {}
+    try { await authAPI.logout() } catch { /* ignore: logout API call failed; we clear local state anyway */ }
     clearAuth()
   }, [])
 
