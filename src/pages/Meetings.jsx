@@ -132,18 +132,16 @@ export default function Meetings() {
     return matchSearch && matchFrom && matchTo
   })
 
-  // Breadcrumb
-  const Breadcrumb = () => (
-    <div className="breadcrumb mb-4">
-      <span style={{ cursor: 'pointer', color: 'var(--primary)' }} onClick={() => { setStep('clients'); setSelectedClient(null); setSelectedProject(null) }}>Meetings</span>
-      {selectedClient && <><span className="breadcrumb-sep">/</span><span style={{ cursor: step === 'projects' ? 'default' : 'pointer', color: step !== 'projects' ? 'var(--primary)' : 'var(--text-muted)' }} onClick={() => step === 'meetings' && back()}>{selectedClient.name}</span></>}
-      {selectedProject && <><span className="breadcrumb-sep">/</span><span style={{ color: 'var(--text-muted)' }}>{selectedProject.name}</span></>}
-    </div>
-  )
 
   return (
     <div className="fade-in">
-      {step !== 'clients' && !flatMode && <Breadcrumb />}
+      {step !== 'clients' && !flatMode && (
+        <div className="breadcrumb mb-4">
+          <span style={{ cursor: 'pointer', color: 'var(--primary)' }} onClick={() => { setStep('clients'); setSelectedClient(null); setSelectedProject(null) }}>Meetings</span>
+          {selectedClient && <><span className="breadcrumb-sep">/</span><span style={{ cursor: step === 'projects' ? 'default' : 'pointer', color: step !== 'projects' ? 'var(--primary)' : 'var(--text-muted)' }} onClick={() => step === 'meetings' && back()}>{selectedClient.name}</span></>}
+          {selectedProject && <><span className="breadcrumb-sep">/</span><span style={{ color: 'var(--text-muted)' }}>{selectedProject.name}</span></>}
+        </div>
+      )}
 
       {/* CLIENTS */}
       {step === 'clients' && (

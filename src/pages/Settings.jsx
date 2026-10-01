@@ -18,7 +18,6 @@ const TABS = [
 ]
 
 export default function Settings() {
-  const toast = useToast()
   const { tab: tabParam } = useParams()
   const navigate = useNavigate()
   const { user, isSuperAdmin, isPM } = useAuth()
@@ -108,6 +107,7 @@ function ProfileTab({ user }) {
 
 /* ---- USERS TAB ---- */
 function UsersTab({ isSuperAdmin }) {
+  const toast = useToast()
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)

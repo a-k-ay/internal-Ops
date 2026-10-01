@@ -33,14 +33,16 @@ export default function AppLayout() {
   useEffect(() => { setDrawerOpen(false) }, [location.pathname])
 
   useEffect(() => {
-    fetchUnread()
-    const t = setInterval(fetchUnread, 30000)
+    // Poll unread notifications every 30s. Defined inline so there's no
+    // forward reference to a const declared below the effect.
+    const poll = async () => {
+      try { const d = await notificationsAPI.unreadCount(); setUnreadCount(d.count) }
+      catch { /* ignore: polling — don't let a network hiccup break the shell */ }
+    }
+    poll()
+    const t = setInterval(poll, 30000)
     return () => clearInterval(t)
   }, [])
-
-  const fetchUnread = async () => {
-    try { const d = await notificationsAPI.unreadCount(); setUnreadCount(d.count) } catch { /* ignore: polling unread count (every 30s) — don't let a network hiccup break the shell */ }
-  }
 
   const handleLogout = async () => { await logout(); navigate('/login') }
 

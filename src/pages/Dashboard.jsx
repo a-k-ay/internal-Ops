@@ -78,23 +78,23 @@ function Donut({ segments, size = 140 }) {
   const stroke = 18
   const r = (size - stroke) / 2
   const c = 2 * Math.PI * r
-  let offset = 0
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ display: 'block' }}>
       <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--bg-sidebar)" strokeWidth={stroke} />
-      {segments.map((seg, i) => {
+      {/* Precompute each slice's start offset so the render pass has no mutation. */}
+      {segments.reduce((acc, seg, i) => {
         const len = (seg.value / total) * c
-        const el = (
+        acc.nodes.push(
           <circle key={i} cx={size / 2} cy={size / 2} r={r} fill="none"
             stroke={seg.color} strokeWidth={stroke}
-            strokeDasharray={`${len} ${c}`} strokeDashoffset={-offset}
+            strokeDasharray={`${len} ${c}`} strokeDashoffset={-acc.offset}
             transform={`rotate(-90 ${size / 2} ${size / 2})`}
             style={{ transition: 'stroke-dasharray 0.35s ease' }}
           />
         )
-        offset += len
-        return el
-      })}
+        acc.offset += len
+        return acc
+      }, { nodes: [], offset: 0 }).nodes}
       <text x="50%" y="50%" dominantBaseline="central" textAnchor="middle"
         style={{ fontSize: 24, fontWeight: 700, fill: 'var(--text-main)' }}>{total}</text>
       <text x="50%" y="66%" dominantBaseline="central" textAnchor="middle"

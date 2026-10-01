@@ -192,8 +192,8 @@ export default function MeetingDetail() {
         .replace(/[–—−]/g, '-')
         .replace(/…/g, '...')
         .replace(/[•●▪▫◦‣⁃]/g, '- ')
-        .replace(/ /g, ' ')
-        .replace(/[^\x00-\x7F]/g, '')
+        .replace(/\u00A0/g, ' ')
+        .replace(/[\u0080-\uFFFF]/g, '')
     }
 
     const doc = new jsPDF()

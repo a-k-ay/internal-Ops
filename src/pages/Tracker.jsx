@@ -195,17 +195,16 @@ export default function Tracker() {
 
   const fmtDate = (d) => d ? format(parseISO(d), 'dd MMM yyyy') : '—'
 
-  const Breadcrumb = () => (
-    <div className="breadcrumb mb-4">
-      <span style={{ cursor: 'pointer', color: 'var(--primary)' }} onClick={() => { setStep('clients'); setSelectedClient(null); setSelectedProject(null) }}>Tracker</span>
-      {selectedClient && <><span className="breadcrumb-sep">/</span><span style={{ cursor: step === 'projects' ? 'default' : 'pointer', color: step !== 'projects' ? 'var(--primary)' : 'var(--text-muted)' }} onClick={() => step === 'tracker' && back()}>{selectedClient.name}</span></>}
-      {selectedProject && <><span className="breadcrumb-sep">/</span><span style={{ color: 'var(--text-muted)' }}>{selectedProject.name}</span></>}
-    </div>
-  )
 
   return (
     <div className="fade-in">
-      {step !== 'clients' && !flatMode && <Breadcrumb />}
+      {step !== 'clients' && !flatMode && (
+        <div className="breadcrumb mb-4">
+          <span style={{ cursor: 'pointer', color: 'var(--primary)' }} onClick={() => { setStep('clients'); setSelectedClient(null); setSelectedProject(null) }}>Tracker</span>
+          {selectedClient && <><span className="breadcrumb-sep">/</span><span style={{ cursor: step === 'projects' ? 'default' : 'pointer', color: step !== 'projects' ? 'var(--primary)' : 'var(--text-muted)' }} onClick={() => step === 'tracker' && back()}>{selectedClient.name}</span></>}
+          {selectedProject && <><span className="breadcrumb-sep">/</span><span style={{ color: 'var(--text-muted)' }}>{selectedProject.name}</span></>}
+        </div>
+      )}
 
       {/* CLIENTS */}
       {step === 'clients' && (
