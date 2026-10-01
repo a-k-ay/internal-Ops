@@ -1,5 +1,7 @@
 # Meeting Action Board
 
+**Live demo:** https://meeting-action-board.vercel.app — log in as `pm` / `demo1234` (PM dashboard), `dev` / `demo1234` (member view), or `admin` / `demo1234` (super-admin). Seeded with 3 clients, 6 meetings, 15 action items, 11 tracker items.
+
 An internal operations tool for small services teams: capture meeting
 minutes, extract action items, and track the work that comes out of them
 in one place instead of across chat threads, email, and separate docs.
