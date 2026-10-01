@@ -99,8 +99,11 @@ router.get('/', verifyToken, async (req, res) => {
                 COUNT(*) FILTER (WHERE a.status = 'in_progress')::int AS in_progress_count,
                 COUNT(*) FILTER (WHERE a.status = 'closed')::int AS closed_count,
                 COUNT(*) FILTER (WHERE a.due_date < CURRENT_DATE AND a.status <> 'closed')::int AS overdue_count,
-                MAX(a.client_id) AS any_client_id,
-                MAX(a.project_id) AS any_project_id
+                -- Postgres has no MAX(uuid). Cast to text so GROUP BY has
+                -- a definable aggregate; the exact pick is 'any one of them',
+                -- which is what the frontend uses it for (pre-selecting a filter).
+                MAX(a.client_id::text)::uuid AS any_client_id,
+                MAX(a.project_id::text)::uuid AS any_project_id
          FROM users u
          LEFT JOIN action_items a
            ON a.assigned_to = u.id AND a.workspace_id = u.workspace_id
