@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { clientsAPI, projectsAPI, trackerAPI } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 import { Plus, ChevronRight, ChevronLeft, Edit2, Trash2, Search, Filter, Target, Download, Link2, FolderOpen, Archive } from 'lucide-react'
@@ -14,7 +15,10 @@ const EMPTY_FORM = { description: '', classification: 'issue', status: 'pending'
 
 export default function Tracker() {
   const { isPM, user, isMember, isSuperAdmin } = useAuth()
-  const [step, setStep] = useState('clients')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const navigate = useNavigate()
+  const flatMode = searchParams.get('view') === 'all'
+  const [step, setStep] = useState(flatMode ? 'tracker' : 'clients')
   const [clients, setClients] = useState([])
   const [selectedClient, setSelectedClient] = useState(null)
   const [projects, setProjects] = useState([])
@@ -35,9 +39,20 @@ export default function Tracker() {
   const [selected, setSelected] = useState([])
 
   useEffect(() => {
+    if (flatMode) {
+      // Flat all-items view — skip client/project drill-down
+      setStep('tracker')
+      setSelectedClient(null); setSelectedProject(null)
+      setLoading(true)
+      trackerAPI.list({}).then(setItems).catch(console.error).finally(() => setLoading(false))
+      return
+    }
+    setStep('clients')
+    setSelectedClient(null); setSelectedProject(null); setItems([])
     const memberId = isMember ? user?.id : null
+    setLoading(true)
     clientsAPI.list(false, memberId).then(setClients).catch(console.error).finally(() => setLoading(false))
-  }, [isMember, user?.id])
+  }, [isMember, user?.id, flatMode])
 
   const selectClient = async (c) => {
     if (c.is_archived) return
@@ -56,6 +71,7 @@ export default function Tracker() {
   }
 
   const back = () => {
+    if (flatMode) { navigate('/dashboard'); return }
     if (step === 'tracker') { setStep('projects'); setSelectedProject(null); setItems([]); resetFilters() }
     else if (step === 'projects') { setStep('clients'); setSelectedClient(null); setProjects([]) }
   }
@@ -63,7 +79,8 @@ export default function Tracker() {
   const resetFilters = () => { setSearch(''); setFilterStatus(''); setFilterClass(''); setFromDate(''); setToDate('') }
 
   const reload = async () => {
-    if (selectedProject) setItems(await trackerAPI.list({ projectId: selectedProject.id }))
+    if (flatMode) setItems(await trackerAPI.list({}))
+    else if (selectedProject) setItems(await trackerAPI.list({ projectId: selectedProject.id }))
   }
 
   const openAdd = () => { setEditItem(null); setForm(EMPTY_FORM); setError(''); setShowModal(true) }
@@ -177,7 +194,7 @@ export default function Tracker() {
 
   return (
     <div className="fade-in">
-      {step !== 'clients' && <Breadcrumb />}
+      {step !== 'clients' && !flatMode && <Breadcrumb />}
 
       {/* CLIENTS */}
       {step === 'clients' && (
@@ -234,7 +251,7 @@ export default function Tracker() {
                     <ChevronRight size={16} style={{ color: 'var(--text-muted)' }} />
                   </div>
                   <h4>{p.name}</h4>
-                  <p style={{ fontSize: '0.75rem', marginTop: 6 }}>{p.tracker_count} item{p.tracker_count !== 1 ? 's' : ''}</p>
+                  <p style={{ fontSize: '0.75rem', marginTop: 6 }}>{p.tracker_count} item{Number(p.tracker_count) !== 1 ? 's' : ''}</p>
                 </div>
               ))}
             </div>
@@ -248,13 +265,13 @@ export default function Tracker() {
           <div className="flex items-center justify-between mb-4" style={{ flexWrap: 'wrap', gap: '0.75rem' }}>
             <div>
               <button className="flex items-center gap-1 text-sm" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', marginBottom: 8 }} onClick={back}><ChevronLeft size={16} />Back</button>
-              <h1 style={{ marginBottom: '0.25rem' }}>{selectedProject?.name} — Tracker</h1>
+              <h1 style={{ marginBottom: '0.25rem' }}>{flatMode ? 'All Tracker Items' : `${selectedProject?.name} — Tracker`}</h1>
               <p>{filtered.length} item{filtered.length !== 1 ? 's' : ''}</p>
             </div>
             <div className="flex items-center gap-2" style={{ flexWrap: 'wrap' }}>
               {selected.length > 0 && isPM && <button className="btn btn-danger-outline btn-sm" onClick={() => setConfirm({ bulk: true })}><Trash2 size={13} />Delete ({selected.length})</button>}
               <button className="btn btn-outline btn-sm" onClick={exportExcel}><Download size={13} />Excel</button>
-              {isPM && <button className="btn btn-primary btn-sm" onClick={openAdd}><Plus size={14} />Add Item</button>}
+              {isPM && !flatMode && <button className="btn btn-primary btn-sm" onClick={openAdd}><Plus size={14} />Add Item</button>}
             </div>
           </div>
 

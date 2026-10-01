@@ -1,5 +1,9 @@
-const { Pool } = require('pg')
+const { Pool, types } = require('pg')
 require('dotenv').config()
+
+// Return Postgres DATE (OID 1082) as raw "YYYY-MM-DD" instead of a JS Date.
+// Prevents server-local-timezone parsing that shifted dates back a day on JSON round-trip.
+types.setTypeParser(1082, (val) => val)
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,

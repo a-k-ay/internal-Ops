@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { clientsAPI, projectsAPI, meetingsAPI } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 import { Plus, Calendar, ChevronRight, ChevronLeft, Edit2, Trash2, Search, Filter, FolderOpen, Archive } from 'lucide-react'
@@ -15,7 +15,9 @@ const EMPTY_PROJ = { name: '', description: '' }
 export default function Meetings() {
   const { isPM, isSuperAdmin } = useAuth()
   const navigate = useNavigate()
-  const [step, setStep] = useState('clients') // clients | projects | meetings
+  const [searchParams] = useSearchParams()
+  const flatMode = searchParams.get('view') === 'all'
+  const [step, setStep] = useState(flatMode ? 'meetings' : 'clients') // clients | projects | meetings
   const [clients, setClients] = useState([])
   const [selectedClient, setSelectedClient] = useState(null)
   const [projects, setProjects] = useState([])
@@ -39,8 +41,18 @@ export default function Meetings() {
   const [attendeePills, setAttendeePills] = useState([])
 
   useEffect(() => {
+    if (flatMode) {
+      setStep('meetings')
+      setSelectedClient(null); setSelectedProject(null)
+      setLoading(true)
+      meetingsAPI.list({}).then(setMeetings).catch(console.error).finally(() => setLoading(false))
+      return
+    }
+    setStep('clients')
+    setSelectedClient(null); setSelectedProject(null); setMeetings([])
+    setLoading(true)
     clientsAPI.list(true).then(setClients).catch(console.error).finally(() => setLoading(false))
-  }, [])
+  }, [flatMode])
 
   const selectClient = async (c) => {
     if (c.is_archived) return
@@ -56,6 +68,7 @@ export default function Meetings() {
   }
 
   const back = () => {
+    if (flatMode) { navigate('/dashboard'); return }
     if (step === 'meetings') { setStep('projects'); setSelectedProject(null); setMeetings([]); setSearch(''); setFromDate(''); setToDate('') }
     else if (step === 'projects') { setStep('clients'); setSelectedClient(null); setProjects([]) }
   }
@@ -128,7 +141,7 @@ export default function Meetings() {
 
   return (
     <div className="fade-in">
-      {step !== 'clients' && <Breadcrumb />}
+      {step !== 'clients' && !flatMode && <Breadcrumb />}
 
       {/* CLIENTS */}
       {step === 'clients' && (
@@ -154,7 +167,7 @@ export default function Meetings() {
                           </span>
                         )}
                       </div>
-                      <p style={{ fontSize: '0.75rem', marginTop: 4 }}>{c.project_count} project{c.project_count !== 1 ? 's' : ''}</p>
+                      <p style={{ fontSize: '0.75rem', marginTop: 4 }}>{c.project_count} project{Number(c.project_count) !== 1 ? 's' : ''}</p>
                     </div>
                     {!c.is_archived && <ChevronRight size={18} style={{ color: 'var(--text-muted)' }} />}
                   </div>
@@ -194,7 +207,7 @@ export default function Meetings() {
                     </div>
                   </div>
                   <h4>{p.name}</h4>
-                  <p style={{ fontSize: '0.75rem', marginTop: 8, color: 'var(--text-muted)' }}>{p.meeting_count} meeting{p.meeting_count !== 1 ? 's' : ''}</p>
+                  <p style={{ fontSize: '0.75rem', marginTop: 8, color: 'var(--text-muted)' }}>{p.meeting_count} meeting{Number(p.meeting_count) !== 1 ? 's' : ''}</p>
                 </div>
               ))}
             </div>
@@ -208,8 +221,8 @@ export default function Meetings() {
           <div className="flex items-center justify-between mb-4">
             <div>
               <button className="flex items-center gap-1 text-sm" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', marginBottom: 8 }} onClick={back}><ChevronLeft size={16} />Back</button>
-              <h1 style={{ marginBottom: '0.25rem' }}>{selectedProject?.name}</h1>
-              {selectedProject?.description && <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>{selectedProject.description}</p>}
+              <h1 style={{ marginBottom: '0.25rem' }}>{flatMode ? 'All Meetings' : selectedProject?.name}</h1>
+              {!flatMode && selectedProject?.description && <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>{selectedProject.description}</p>}
               <p>{filteredMtgs.length} meeting{filteredMtgs.length !== 1 ? 's' : ''}</p>
             </div>
             <div className="flex items-center gap-2">
@@ -218,7 +231,7 @@ export default function Meetings() {
                   <Trash2 size={14} />Delete ({selectedMtgs.length})
                 </button>
               )}
-              {isPM && <button className="btn btn-primary" onClick={openAddMtg}><Plus size={16} />New Meeting</button>}
+              {isPM && !flatMode && <button className="btn btn-primary" onClick={openAddMtg}><Plus size={16} />New Meeting</button>}
             </div>
           </div>
 
@@ -263,7 +276,7 @@ export default function Meetings() {
                       <div className="flex items-center justify-between">
                         <div>
                           <h4 className="truncate">{m.title}</h4>
-                          <p style={{ fontSize: '0.8125rem', marginTop: 2 }}>{m.open_action_count > 0 ? `${m.open_action_count} open action${m.open_action_count !== 1 ? 's' : ''}` : 'No open actions'} · {m.action_count} total</p>
+                          <p style={{ fontSize: '0.8125rem', marginTop: 2 }}>{Number(m.open_action_count) > 0 ? `${m.open_action_count} open action${Number(m.open_action_count) !== 1 ? 's' : ''}` : 'No open actions'} · {m.action_count} total</p>
                         </div>
                         <div className="flex items-center gap-2">
                           <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{format(parseISO(m.date), 'MMM d, yyyy')}</span>
@@ -312,6 +325,17 @@ export default function Meetings() {
                     placeholder="Type name, press Enter or comma..."
                     value={attendeeInput}
                     onChange={e => setAttendeeInput(e.target.value)}
+                    onPaste={e => {
+                      const text = e.clipboardData.getData('text')
+                      if (text.includes(',')) {
+                        e.preventDefault()
+                        const parts = text.split(',').map(s => s.trim()).filter(Boolean)
+                        if (parts.length) {
+                          setAttendeePills(ps => [...ps, ...parts])
+                          setAttendeeInput('')
+                        }
+                      }
+                    }}
                     onKeyDown={e => {
                       if ((e.key === 'Enter' || e.key === ',') && attendeeInput.trim()) {
                         e.preventDefault()

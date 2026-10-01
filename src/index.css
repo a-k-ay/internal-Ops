@@ -246,10 +246,76 @@ tbody tr:hover td { background: var(--bg-sidebar); }
 .grid-auto { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap: 1rem; }
 
 /* KPI Cards */
-.kpi-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem; }
+.kpi-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem; transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease; }
+.kpi-card.kpi-clickable { cursor: pointer; }
+.kpi-card.kpi-clickable:hover { transform: translateY(-2px); border-color: var(--primary); background: var(--primary-soft); box-shadow: 0 6px 18px -8px rgba(37, 99, 235, 0.35); }
 .kpi-value { font-size: 2rem; font-weight: 700; color: var(--text-main); line-height: 1; }
 .kpi-label { font-size: 0.8125rem; color: var(--text-muted); margin-top: 0.25rem; font-weight: 500; }
 .kpi-icon { width: 2.5rem; height: 2.5rem; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+/* Dashboard collapsible section (ribbon) */
+.dash-section { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 0.6rem; }
+.dash-ribbon { display: flex; align-items: center; justify-content: space-between; padding: 0.55rem 0.9rem; cursor: pointer; user-select: none; background: var(--bg-card); border: none; width: 100%; text-align: left; transition: background 0.15s ease; border-bottom: 1px solid transparent; }
+.dash-ribbon:hover { background: var(--primary-soft); }
+.dash-section.is-open .dash-ribbon { border-bottom-color: var(--border); }
+.dash-ribbon-title { display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; font-weight: 600; color: var(--text-main); }
+.dash-ribbon-title .dash-ribbon-icon { color: var(--primary); display: flex; align-items: center; }
+.dash-ribbon-chevron { color: var(--text-muted); transition: transform 0.2s ease; }
+.dash-section.is-open .dash-ribbon-chevron { transform: rotate(180deg); }
+.dash-section-body { padding: 0.7rem 0.9rem 0.85rem; }
+.dash-section-body p.dash-empty { text-align: center; padding: 0.6rem 0; font-size: 0.85rem; color: var(--text-muted); margin: 0; }
+
+/* Dashboard uses a tighter grid gap than the app-wide grid-2/4 */
+.dash-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.6rem; }
+.dash-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+
+/* Dashboard filter selects — enforce readable width so text is never clipped */
+.dash-filter-select { min-width: 150px; height: 32px; padding-right: 2rem; }
+.dash-filter-select.wide { min-width: 180px; }
+
+/* Dashboard micro-viz + tile extras */
+.dash-progress { height: 4px; background: var(--bg-sidebar); border-radius: 999px; overflow: hidden; margin-top: 0.5rem; }
+.dash-progress > span { display: block; height: 100%; background: var(--primary); border-radius: 999px; transition: width 0.3s ease; }
+.dash-weekdots { display: flex; gap: 4px; margin-top: 0.5rem; }
+.dash-weekdots .d { width: 10px; height: 10px; border-radius: 50%; background: var(--bg-sidebar); position: relative; }
+.dash-weekdots .d.has { background: var(--primary); }
+.dash-weekdots .d.today { outline: 2px solid var(--primary); outline-offset: 1px; }
+.dash-pulse { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--error); margin-left: 0.5rem; box-shadow: 0 0 0 rgba(220,38,38,0.6); animation: dash-pulse 1.6s infinite; vertical-align: middle; }
+@keyframes dash-pulse { 0% { box-shadow: 0 0 0 0 rgba(220,38,38,0.55); } 70% { box-shadow: 0 0 0 8px rgba(220,38,38,0); } 100% { box-shadow: 0 0 0 0 rgba(220,38,38,0); } }
+
+/* Stacked bar for team workload */
+.dash-stacked { display: flex; height: 10px; border-radius: 999px; overflow: hidden; background: var(--bg-sidebar); flex: 1; min-width: 120px; }
+.dash-stacked > span { display: block; height: 100%; transition: width 0.25s ease; }
+.dash-stacked .seg-open { background: #ef4444; }
+.dash-stacked .seg-progress { background: #3b82f6; }
+.dash-stacked .seg-overdue { background: #b91c1c; }
+.dash-stacked .seg-closed { background: #16a34a; }
+.dash-workload-row { display: grid; grid-template-columns: minmax(140px, 1.5fr) 1fr auto; gap: 0.75rem; align-items: center; padding: 0.5rem 0.5rem; border-radius: var(--radius); cursor: pointer; transition: background 0.15s ease; }
+.dash-workload-row:hover { background: var(--primary-soft); }
+.dash-workload-legend { display: flex; gap: 0.85rem; font-size: 0.72rem; color: var(--text-muted); margin-top: 0.35rem; flex-wrap: wrap; }
+.dash-workload-legend .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+
+/* Horizontal bar rows (used by tracker classification, tasks by project) */
+.dash-hbar-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.5rem; align-items: center; padding: 0.35rem 0; }
+.dash-hbar-track { position: relative; height: 8px; background: var(--bg-sidebar); border-radius: 999px; overflow: hidden; }
+.dash-hbar-track > span { display: block; height: 100%; background: var(--primary); border-radius: 999px; transition: width 0.3s ease; }
+.dash-hbar-label { font-size: 0.8rem; color: var(--text-main); margin-bottom: 4px; display: flex; justify-content: space-between; }
+.dash-hbar-count { font-weight: 700; font-size: 0.85rem; color: var(--text-main); min-width: 24px; text-align: right; }
+
+/* Segmented control (filter toggle in ribbons) */
+.dash-seg { display: inline-flex; background: var(--bg-sidebar); padding: 2px; border-radius: 999px; }
+.dash-seg button { border: none; background: transparent; color: var(--text-muted); padding: 0.25rem 0.7rem; font-size: 0.75rem; font-weight: 600; border-radius: 999px; cursor: pointer; transition: background 0.15s ease, color 0.15s ease; }
+.dash-seg button.active { background: var(--bg-card); color: var(--primary); box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
+
+/* Priority queue (member) */
+.dash-queue-group { margin-top: 0.5rem; }
+.dash-queue-group:first-child { margin-top: 0; }
+.dash-queue-heading { font-size: 0.72rem; letter-spacing: 0.05em; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.35rem; display: flex; align-items: center; gap: 0.4rem; }
+.dash-queue-heading .swatch { width: 8px; height: 8px; border-radius: 50%; }
+.dash-queue-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 0.6rem; align-items: center; padding: 0.5rem 0.6rem; border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 0.35rem; transition: background 0.15s ease; }
+.dash-queue-row:hover { background: var(--primary-soft); }
+.dash-queue-title { font-size: 0.85rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dash-queue-meta { font-size: 0.7rem; color: var(--text-muted); }
 
 /* Empty State */
 .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4rem 2rem; text-align: center; }
