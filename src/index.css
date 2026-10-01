@@ -270,7 +270,9 @@ tbody tr:hover td { background: var(--bg-sidebar); }
 .dash-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
 
 /* Dashboard filter selects — enforce readable width so text is never clipped */
-.dash-filter-select { min-width: 150px; height: 32px; padding-right: 2rem; }
+/* Height was 32px — too tight for the inherited input padding, so the
+   text was being clipped. Let padding compute the natural height (~38px). */
+.dash-filter-select { min-width: 150px; padding-right: 2rem; }
 .dash-filter-select.wide { min-width: 180px; }
 
 /* Dashboard micro-viz + tile extras */

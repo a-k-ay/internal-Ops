@@ -5,6 +5,9 @@ const { verifyToken } = require('../middleware/auth')
 
 // GET /api/dashboard - global KPIs (shows different data based on user role)
 router.get('/', verifyToken, async (req, res) => {
+  // Dashboard is user-specific and changes constantly; never let a browser
+  // or intermediary cache a snapshot of it.
+  res.set('Cache-Control', 'no-store')
   const wid = req.user.workspaceId
   const uid = req.user.id
   const userRole = req.user.role

@@ -283,7 +283,7 @@ function TeamWorkloadSection({ data, navigate }) {
       <div className="flex items-center gap-2" style={{ flexWrap: 'wrap', marginBottom: '0.75rem' }}>
         <div className="input-icon-wrap" style={{ flex: '1 1 180px', maxWidth: 220 }}>
           <Search size={13} className="icon" />
-          <input className="input" style={{ height: 32 }} placeholder="Search member..." value={search} onChange={e => setSearch(e.target.value)} />
+          <input className="input" placeholder="Search member..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <select className="input dash-filter-select" value={clientId} onChange={e => setClientId(e.target.value)}>
           <option value="">All Clients</option>
