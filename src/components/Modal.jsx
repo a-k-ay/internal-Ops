@@ -5,11 +5,16 @@ export default function Modal({ title, onClose, children, footer, maxWidth = '52
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose() }
     document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.body.style.overflow = prevOverflow
+    }
   }, [onClose])
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
+    <div className="modal-backdrop" onClick={onClose} role="dialog" aria-modal="true">
       <div className="modal" style={{ maxWidth }} onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <h3 style={{ margin: 0 }}>{title}</h3>

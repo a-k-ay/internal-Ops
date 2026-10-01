@@ -95,9 +95,10 @@ export default function Clients() {
       </div>
 
       {loading ? <Spinner large center /> : filtered.length === 0 ? (
-        <EmptyState icon={Building2} title="No clients found"
-          description={search ? 'Try adjusting your search' : 'Add your first client to get started'}
-          action={isPM && !search ? <button className="btn btn-primary" onClick={openAdd}><Plus size={16} />Add Client</button> : null} />
+        <EmptyState icon={Building2}
+          title={showArchived ? 'No archived clients' : 'No clients found'}
+          description={showArchived ? 'Archived clients will appear here' : (search ? 'Try adjusting your search' : 'Add your first client to get started')}
+          action={isPM && !search && !showArchived ? <button className="btn btn-primary" onClick={openAdd}><Plus size={16} />Add Client</button> : null} />
       ) : (
         <div className="grid-auto">
           {filtered.map(c => (

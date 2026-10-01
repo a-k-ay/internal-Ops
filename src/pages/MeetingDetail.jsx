@@ -117,7 +117,7 @@ export default function MeetingDetail() {
         classification: trackerForm.classification,
         raisedDate: trackerForm.raisedDate,
         remarks: trackerForm.remarks,
-        raisedBy: trackerAction.assigned_to_name || user.fullName,
+        raisedBy: trackerAction.assigned_to_name || '',
       })
       await actionItemsAPI.addToTracker(trackerAction.id, item.id)
       setActions(a => a.map(x => x.id === trackerAction.id ? { ...x, is_tracked: true, tracker_item_id: item.id } : x))
