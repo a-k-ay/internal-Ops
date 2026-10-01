@@ -80,7 +80,9 @@ router.post('/', verifyToken, requirePMOrAbove, async (req, res) => {
 })
 
 // PUT /api/tracker/:id
-router.put('/:id', verifyToken, async (req, res) => {
+// PM/admin only — members shouldn't touch the tracker directly; their
+// action-item status changes propagate here via the one-way sync.
+router.put('/:id', verifyToken, requirePMOrAbove, async (req, res) => {
   const { description, classification, status, raisedDate, devStartDate, deployedDate, raisedBy, remarks } = req.body
   try {
     const existing = await query(`SELECT * FROM tracker_items WHERE id = $1 AND workspace_id = $2`, [req.params.id, req.user.workspaceId])

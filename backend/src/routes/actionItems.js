@@ -66,6 +66,20 @@ router.put('/:id', verifyToken, async (req, res) => {
     if (!existing.rows[0]) return res.status(404).json({ error: 'Action item not found' })
     const item = existing.rows[0]
 
+    // Authorization: members may only update items assigned to them, and
+    // may only change `status`. PM/admin can change any field. Reject
+    // disallowed fields explicitly rather than silently dropping them so a
+    // misbehaving client surfaces as a 403 rather than a confusing no-op.
+    if (req.user.role === 'member') {
+      if (item.assigned_to !== req.user.id) {
+        return res.status(403).json({ error: 'You can only update items assigned to you' })
+      }
+      const memberForbidden = ['title', 'assignedTo', 'assignedToName', 'dueDate'].filter(k => k in req.body)
+      if (memberForbidden.length) {
+        return res.status(403).json({ error: `Members can only change status (got: ${memberForbidden.join(', ')})` })
+      }
+    }
+
     // If item is tracked and user tries to close it directly, warn them
     if (item.is_tracked && status === 'closed' && item.status !== 'closed') {
       // Allow it but we flag it — frontend handles the warning message
