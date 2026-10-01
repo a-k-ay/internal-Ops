@@ -1,17 +1,19 @@
 import { useState, useEffect, useRef } from 'react'
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { notificationsAPI, searchAPI } from '../api/client'
 import {
   LayoutDashboard, Users2, Calendar, Target, Settings,
   LogOut, Bell, Search, Sun, Moon, ChevronDown,
-  Building2, X, FileText, CheckSquare
+  Building2, X, FileText, CheckSquare, Menu
 } from 'lucide-react'
 import { format } from 'date-fns'
 
 export default function AppLayout() {
   const { user, logout, isMember } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  const [drawerOpen, setDrawerOpen] = useState(false)
   const [theme, setTheme] = useState(() => localStorage.getItem('mab_theme') || 'light')
   const [unreadCount, setUnreadCount] = useState(0)
   const [showSearch, setShowSearch] = useState(false)
@@ -25,6 +27,10 @@ export default function AppLayout() {
     document.documentElement.setAttribute('data-theme', theme)
     localStorage.setItem('mab_theme', theme)
   }, [theme])
+
+  // Close the mobile drawer whenever the route changes so a NavLink click
+  // doesn't leave the user staring at the drawer on the next screen.
+  useEffect(() => { setDrawerOpen(false) }, [location.pathname])
 
   useEffect(() => {
     fetchUnread()
@@ -70,7 +76,7 @@ export default function AppLayout() {
   return (
     <div className="app-shell">
       {/* Sidebar */}
-      <aside className="sidebar">
+      <aside className={`sidebar${drawerOpen ? ' is-open' : ''}`}>
         <div style={{ padding: '1.25rem 1rem', borderBottom: '1px solid var(--border)' }}>
           <div className="flex items-center gap-2">
             <div style={{ width: 32, height: 32, background: 'var(--primary)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -114,11 +120,17 @@ export default function AppLayout() {
         </div>
       </aside>
 
+      {/* Backdrop: visible on mobile when drawer is open; tap to close */}
+      {drawerOpen && <div className="drawer-backdrop" onClick={() => setDrawerOpen(false)} aria-hidden="true" />}
+
       {/* Main */}
       <div className="main-content">
         <header className="page-header">
           <div className="flex items-center gap-3">
-            <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{format(new Date(), 'EEE, MMM d')}</span>
+            <button className="menu-btn btn-ghost" onClick={() => setDrawerOpen(o => !o)} aria-label="Toggle menu" aria-expanded={drawerOpen}>
+              <Menu size={18} />
+            </button>
+            <span className="header-date" style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{format(new Date(), 'EEE, MMM d')}</span>
           </div>
           <div className="flex items-center gap-2">
             {/* Search */}
