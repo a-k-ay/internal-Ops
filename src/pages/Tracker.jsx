@@ -4,6 +4,7 @@ import { clientsAPI, projectsAPI, trackerAPI } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 import { Plus, ChevronRight, ChevronLeft, Edit2, Trash2, Search, Filter, Target, Download, Link2, FolderOpen, Archive } from 'lucide-react'
 import Modal from '../components/Modal'
+import { useToast } from '../components/Toast'
 import ConfirmDialog from '../components/ConfirmDialog'
 import Spinner from '../components/Spinner'
 import EmptyState from '../components/EmptyState'
@@ -14,6 +15,7 @@ import * as XLSX from 'xlsx-js-style'
 const EMPTY_FORM = { description: '', classification: 'issue', status: 'pending', raisedDate: format(new Date(), 'yyyy-MM-dd'), devStartDate: '', deployedDate: '', raisedBy: '', remarks: '' }
 
 export default function Tracker() {
+  const toast = useToast()
   const { isPM, user, isMember, isSuperAdmin } = useAuth()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
@@ -116,12 +118,12 @@ export default function Tracker() {
   }
 
   const handleDelete = async (id) => {
-    try { await trackerAPI.delete(id); setItems(i => i.filter(x => x.id !== id)) } catch (err) { alert(err.message) }
+    try { await trackerAPI.delete(id); setItems(i => i.filter(x => x.id !== id)) } catch (err) { toast.error(err.message) }
     setConfirm(null)
   }
 
   const bulkDelete = async () => {
-    try { await trackerAPI.bulkDelete(selected); setItems(i => i.filter(x => !selected.includes(x.id))); setSelected([]) } catch (err) { alert(err.message) }
+    try { await trackerAPI.bulkDelete(selected); setItems(i => i.filter(x => !selected.includes(x.id))); setSelected([]) } catch (err) { toast.error(err.message) }
     setConfirm(null)
   }
 

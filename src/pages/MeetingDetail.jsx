@@ -4,6 +4,7 @@ import { meetingsAPI, actionItemsAPI, trackerAPI, usersAPI, aiAPI } from '../api
 import { useAuth } from '../context/AuthContext'
 import { ChevronLeft, Plus, Edit2, Trash2, Download, Sparkles, Link2, CheckSquare, AlertCircle, FileText } from 'lucide-react'
 import Modal from '../components/Modal'
+import { useToast } from '../components/Toast'
 import ConfirmDialog from '../components/ConfirmDialog'
 import Spinner from '../components/Spinner'
 import EmptyState from '../components/EmptyState'
@@ -15,6 +16,7 @@ import autoTable from 'jspdf-autotable'
 const EMPTY_ACTION = { title: '', assignedTo: '', assignedToName: '', dueDate: '' }
 
 export default function MeetingDetail() {
+  const toast = useToast()
   const { meetingId } = useParams()
   const { isPM, isSuperAdmin } = useAuth()
   const navigate = useNavigate()
@@ -122,7 +124,7 @@ export default function MeetingDetail() {
       await actionItemsAPI.addToTracker(trackerAction.id, item.id)
       setActions(a => a.map(x => x.id === trackerAction.id ? { ...x, is_tracked: true, tracker_item_id: item.id } : x))
       setShowTrackerModal(false)
-    } catch (err) { alert(err.message) }
+    } catch (err) { toast.error(err.message) }
     setSaving(false)
   }
 
@@ -140,7 +142,7 @@ export default function MeetingDetail() {
       setMeeting(m => ({ ...m, discussion_points: aiNotes, ai_summary: res.summary }))
       setShowAiModal(false)
       setAiNotes('')
-    } catch (err) { alert(err.message) }
+    } catch (err) { toast.error(err.message) }
     setAiLoading(false)
   }
 
@@ -165,7 +167,7 @@ export default function MeetingDetail() {
       }
       const actionParams = { meetingId }
       setActions(await actionItemsAPI.list(actionParams))
-    } catch (err) { alert(err.message) }
+    } catch (err) { toast.error(err.message) }
     setAiLoading(false)
   }
 

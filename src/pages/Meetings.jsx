@@ -4,6 +4,7 @@ import { clientsAPI, projectsAPI, meetingsAPI } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 import { Plus, Calendar, ChevronRight, ChevronLeft, Edit2, Trash2, Search, Filter, FolderOpen, Archive } from 'lucide-react'
 import Modal from '../components/Modal'
+import { useToast } from '../components/Toast'
 import ConfirmDialog from '../components/ConfirmDialog'
 import Spinner from '../components/Spinner'
 import EmptyState from '../components/EmptyState'
@@ -13,6 +14,7 @@ const EMPTY_MTG = { title: '', date: format(new Date(), 'yyyy-MM-dd'), attendees
 const EMPTY_PROJ = { name: '', description: '' }
 
 export default function Meetings() {
+  const toast = useToast()
   const { isPM, isSuperAdmin } = useAuth()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -96,7 +98,7 @@ export default function Meetings() {
     setSaving(false)
   }
   const deleteMtg = async (id) => {
-    try { await meetingsAPI.delete(id); setMeetings(m => m.filter(x => x.id !== id)) } catch (err) { alert(err.message) }
+    try { await meetingsAPI.delete(id); setMeetings(m => m.filter(x => x.id !== id)) } catch (err) { toast.error(err.message) }
     setConfirm(null)
   }
 
@@ -106,7 +108,7 @@ export default function Meetings() {
     try {
       await projectsAPI.delete(id)
       setProjects(ps => ps.filter(p => p.id !== id))
-    } catch (err) { alert(err.message) }
+    } catch (err) { toast.error(err.message) }
     setConfirm(null)
   }
   const saveProj = async (e) => {

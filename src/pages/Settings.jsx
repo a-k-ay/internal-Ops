@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { usersAPI, notificationsAPI, auditAPI } from '../api/client'
 import { User, Shield, Bell, Plus, Edit2, ToggleLeft, ToggleRight, Trash2, Eye, EyeOff, Clock } from 'lucide-react'
 import Modal from '../components/Modal'
+import { useToast } from '../components/Toast'
 import ConfirmDialog from '../components/ConfirmDialog'
 import Spinner from '../components/Spinner'
 import Badge from '../components/Badge'
@@ -17,6 +18,7 @@ const TABS = [
 ]
 
 export default function Settings() {
+  const toast = useToast()
   const { tab: tabParam } = useParams()
   const navigate = useNavigate()
   const { user, isSuperAdmin, isPM } = useAuth()
@@ -131,9 +133,9 @@ function UsersTab({ isSuperAdmin }) {
     setSaving(false)
   }
 
-  const toggleActive = async (id) => { try { await usersAPI.toggleActive(id); load() } catch (err) { alert(err.message) } }
+  const toggleActive = async (id) => { try { await usersAPI.toggleActive(id); load() } catch (err) { toast.error(err.message) } }
   const deleteUser = async (id) => {
-    try { await usersAPI.delete(id); load() } catch (err) { alert(err.message) }
+    try { await usersAPI.delete(id); load() } catch (err) { toast.error(err.message) }
     setConfirm(null)
   }
 
