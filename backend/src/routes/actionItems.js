@@ -85,10 +85,20 @@ router.put('/:id', verifyToken, async (req, res) => {
       // Allow it but we flag it — frontend handles the warning message
     }
 
+    // Respect explicit null in the payload so clients can clear
+    // assigned_to / assigned_to_name / due_date (same pattern used in
+    // tracker.js). Fields missing from the body fall back to current.
+    const pick = (key, current) => (key in req.body ? req.body[key] : current)
+
     const result = await query(
       `UPDATE action_items SET title = $1, assigned_to = $2, assigned_to_name = $3, due_date = $4, status = $5, updated_at = NOW()
        WHERE id = $6 AND workspace_id = $7 RETURNING *`,
-      [title || item.title, assignedTo || item.assigned_to, assignedToName || item.assigned_to_name, dueDate || item.due_date, status || item.status, req.params.id, req.user.workspaceId]
+      [title || item.title,
+       pick('assignedTo', item.assigned_to),
+       pick('assignedToName', item.assigned_to_name),
+       pick('dueDate', item.due_date),
+       status || item.status,
+       req.params.id, req.user.workspaceId]
     )
 
     // Notify PM if status changed
