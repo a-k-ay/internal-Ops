@@ -139,6 +139,52 @@ src/
   components/              # Modal, Spinner, etc.
 ```
 
+## Deploy
+
+The frontend is a static Vite build; the backend is a stateless Express
+API talking to a managed Postgres (Neon). Three config files are
+checked in so the setup is reproducible:
+
+- [vercel.json](vercel.json) — frontend. Framework=vite, SPA rewrites so
+  client-side routes don't 404. Set `VITE_API_URL` in the Vercel
+  project to the public API origin before the first build.
+- [backend/render.yaml](backend/render.yaml) — Render infra-as-code for
+  the API. Point Render at the repo with Blueprint and it reads this
+  file. Secret env vars (DATABASE_URL, JWT_SECRET, etc.) are marked
+  `sync: false` so they stay in the Render dashboard, not git.
+- [backend/railway.json](backend/railway.json) and
+  [backend/Procfile](backend/Procfile) — the same deploy on Railway /
+  Heroku-style platforms if you prefer those.
+
+CORS: the backend reads `FRONTEND_URL` and adds that origin to the
+allow list alongside localhost. Set it to the Vercel URL (no trailing
+slash) in Render/Railway.
+
+### Seeding a demo workspace
+
+For a public demo you probably want data on screen, not an empty state.
+[backend/scripts/seed-demo.js](backend/scripts/seed-demo.js) populates
+a self-contained "Demo Workspace" with 5 users, 3 clients, 6 meetings,
+15 action items (some overdue, some closed), 11 tracker items across
+all four classifications, and one filled AI-generated MoM summary.
+
+```bash
+cd backend
+node scripts/seed-demo.js          # creates the workspace if missing
+node scripts/seed-demo.js --reset  # drops and recreates
+```
+
+Demo credentials (printed again at the end of each run):
+
+| Username | Role         | Password  |
+|----------|--------------|-----------|
+| admin    | super_admin  | demo1234  |
+| pm       | pm           | demo1234  |
+| dev / sara / raj | member | demo1234 |
+
+Point first-time visitors at `pm` to see the full workspace dashboard;
+log in as `dev` to see the member-focused priority queue.
+
 ## Status and roadmap
 
 Working today: all core flows above, workspace registration, role-based

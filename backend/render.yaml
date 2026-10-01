@@ -1,0 +1,33 @@
+# Infrastructure-as-code for Render (https://render.com).
+# Deploys the Express API as a web service on Render's free tier.
+# Point the Render dashboard at this file when creating a new service, or
+# commit and connect the repo and Render will auto-detect.
+
+services:
+  - type: web
+    name: meeting-action-board-api
+    runtime: node
+    region: oregon
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: node src/index.js
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      # The sensitive ones must be set in the Render dashboard; marking as
+      # `sync: false` keeps them out of git while still declaring intent.
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
