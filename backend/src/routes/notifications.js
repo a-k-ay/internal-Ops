@@ -12,6 +12,7 @@ router.get('/', verifyToken, async (req, res) => {
     )
     res.json(result.rows)
   } catch (err) {
+    console.error('[notifications] error:', err)
     res.status(500).json({ error: 'Failed to fetch notifications' })
   }
 })
@@ -25,6 +26,7 @@ router.get('/unread-count', verifyToken, async (req, res) => {
     )
     res.json({ count: parseInt(result.rows[0].count) })
   } catch (err) {
+    console.error('[notifications] error:', err)
     res.status(500).json({ error: 'Failed to fetch count' })
   }
 })
@@ -35,6 +37,7 @@ router.put('/:id/read', verifyToken, async (req, res) => {
     await query(`UPDATE notifications SET is_read = TRUE WHERE id = $1 AND user_id = $2`, [req.params.id, req.user.id])
     res.json({ message: 'Marked as read' })
   } catch (err) {
+    console.error('[notifications] error:', err)
     res.status(500).json({ error: 'Failed to mark as read' })
   }
 })
@@ -45,6 +48,7 @@ router.put('/read-all/mark', verifyToken, async (req, res) => {
     await query(`UPDATE notifications SET is_read = TRUE WHERE user_id = $1`, [req.user.id])
     res.json({ message: 'All marked as read' })
   } catch (err) {
+    console.error('[notifications] error:', err)
     res.status(500).json({ error: 'Failed to mark all as read' })
   }
 })

@@ -29,6 +29,7 @@ router.get('/', verifyToken, async (req, res) => {
     const result = await query(q, params)
     res.json(result.rows)
   } catch (err) {
+    console.error('[actionItems] error:', err)
     res.status(500).json({ error: 'Failed to fetch action items' })
   }
 })
@@ -53,6 +54,7 @@ router.post('/', verifyToken, requirePMOrAbove, async (req, res) => {
     }
     res.status(201).json(item)
   } catch (err) {
+    console.error('[actionItems] error:', err)
     res.status(500).json({ error: 'Failed to create action item' })
   }
 })
@@ -112,6 +114,7 @@ router.put('/:id', verifyToken, async (req, res) => {
     await auditLog({ workspaceId: req.user.workspaceId, userId: req.user.id, userName: req.user.fullName, action: 'update', entityType: 'action_item', entityId: req.params.id, entityName: item.title, changes: { status: { from: item.status, to: status } } })
     res.json(result.rows[0])
   } catch (err) {
+    console.error('[actionItems] error:', err)
     res.status(500).json({ error: 'Failed to update action item' })
   }
 })
@@ -129,6 +132,7 @@ router.put('/:id/add-to-tracker', verifyToken, requirePMOrAbove, async (req, res
     if (!result.rows[0]) return res.status(404).json({ error: 'Action item not found' })
     res.json(result.rows[0])
   } catch (err) {
+    console.error('[actionItems] error:', err)
     res.status(500).json({ error: 'Failed to link tracker item' })
   }
 })
@@ -142,6 +146,7 @@ router.delete('/:id', verifyToken, requirePMOrAbove, async (req, res) => {
     await auditLog({ workspaceId: req.user.workspaceId, userId: req.user.id, userName: req.user.fullName, action: 'delete', entityType: 'action_item', entityId: req.params.id, entityName: item.rows[0].title })
     res.json({ message: 'Action item deleted' })
   } catch (err) {
+    console.error('[actionItems] error:', err)
     res.status(500).json({ error: 'Failed to delete action item' })
   }
 })
@@ -154,6 +159,7 @@ router.delete('/bulk/delete', verifyToken, requirePMOrAbove, async (req, res) =>
     await query(`DELETE FROM action_items WHERE id = ANY($1::uuid[]) AND workspace_id = $2`, [ids, req.user.workspaceId])
     res.json({ message: `${ids.length} items deleted` })
   } catch (err) {
+    console.error('[actionItems] error:', err)
     res.status(500).json({ error: 'Failed to bulk delete' })
   }
 })

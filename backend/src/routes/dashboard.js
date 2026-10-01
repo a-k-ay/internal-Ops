@@ -171,6 +171,7 @@ router.get('/client/:clientId', verifyToken, async (req, res) => {
       upcomingDueDates: upcomingDue.rows
     })
   } catch (err) {
+    console.error('[dashboard] error:', err)
     res.status(500).json({ error: 'Failed to fetch client dashboard' })
   }
 })

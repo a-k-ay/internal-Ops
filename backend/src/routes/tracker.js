@@ -31,6 +31,7 @@ router.get('/', verifyToken, async (req, res) => {
     const result = await query(q, params)
     res.json(result.rows)
   } catch (err) {
+    console.error('[tracker] error:', err)
     res.status(500).json({ error: 'Failed to fetch tracker items' })
   }
 })
@@ -50,6 +51,7 @@ router.get('/:id', verifyToken, async (req, res) => {
     if (!result.rows[0]) return res.status(404).json({ error: 'Tracker item not found' })
     res.json(result.rows[0])
   } catch (err) {
+    console.error('[tracker] error:', err)
     res.status(500).json({ error: 'Failed to fetch tracker item' })
   }
 })
@@ -75,6 +77,7 @@ router.post('/', verifyToken, requirePMOrAbove, async (req, res) => {
     await auditLog({ workspaceId: req.user.workspaceId, userId: req.user.id, userName: req.user.fullName, action: 'create', entityType: 'tracker_item', entityId: item.id, entityName: item.description.substring(0, 50) })
     res.status(201).json(item)
   } catch (err) {
+    console.error('[tracker] error:', err)
     res.status(500).json({ error: 'Failed to create tracker item' })
   }
 })
@@ -119,6 +122,7 @@ router.put('/:id', verifyToken, requirePMOrAbove, async (req, res) => {
     await auditLog({ workspaceId: req.user.workspaceId, userId: req.user.id, userName: req.user.fullName, action: 'update', entityType: 'tracker_item', entityId: req.params.id, entityName: item.description.substring(0, 50), changes: { status: { from: item.status, to: status } } })
     res.json(result.rows[0])
   } catch (err) {
+    console.error('[tracker] error:', err)
     res.status(500).json({ error: 'Failed to update tracker item' })
   }
 })
@@ -138,6 +142,7 @@ router.delete('/:id', verifyToken, requirePMOrAbove, async (req, res) => {
     await auditLog({ workspaceId: req.user.workspaceId, userId: req.user.id, userName: req.user.fullName, action: 'delete', entityType: 'tracker_item', entityId: req.params.id })
     res.json({ message: 'Tracker item deleted' })
   } catch (err) {
+    console.error('[tracker] error:', err)
     res.status(500).json({ error: 'Failed to delete tracker item' })
   }
 })
@@ -152,6 +157,7 @@ router.delete('/bulk/delete', verifyToken, requirePMOrAbove, async (req, res) =>
     await query(`DELETE FROM tracker_items WHERE id = ANY($1::uuid[]) AND workspace_id = $2`, [ids, req.user.workspaceId])
     res.json({ message: `${ids.length} items deleted` })
   } catch (err) {
+    console.error('[tracker] error:', err)
     res.status(500).json({ error: 'Failed to bulk delete' })
   }
 })

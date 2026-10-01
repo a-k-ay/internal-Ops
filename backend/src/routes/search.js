@@ -26,6 +26,7 @@ router.get('/', verifyToken, async (req, res) => {
       trackerItems: trackerItems.rows
     })
   } catch (err) {
+    console.error('[search] error:', err)
     res.status(500).json({ error: 'Search failed' })
   }
 })

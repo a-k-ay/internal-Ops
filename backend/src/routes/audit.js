@@ -17,6 +17,7 @@ router.get('/', verifyToken, requireSuperAdmin, async (req, res) => {
     const result = await query(q, params)
     res.json(result.rows)
   } catch (err) {
+    console.error('[audit] error:', err)
     res.status(500).json({ error: 'Failed to fetch audit logs' })
   }
 })

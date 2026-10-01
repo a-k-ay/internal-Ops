@@ -133,6 +133,7 @@ router.get('/me', verifyToken, async (req, res) => {
     const u = result.rows[0]
     res.json({ id: u.id, username: u.username, fullName: u.full_name, role: u.role, workspaceId: u.workspace_id, workspaceName: u.workspace_name, workspaceSlug: u.workspace_slug })
   } catch (err) {
+    console.error('[auth] error:', err)
     res.status(500).json({ error: 'Server error' })
   }
 })

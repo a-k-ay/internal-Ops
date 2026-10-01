@@ -28,6 +28,7 @@ router.get('/', verifyToken, async (req, res) => {
     const result = await query(q, params)
     res.json(result.rows)
   } catch (err) {
+    console.error('[meetings] error:', err)
     res.status(500).json({ error: 'Failed to fetch meetings' })
   }
 })
@@ -47,6 +48,7 @@ router.get('/:id', verifyToken, async (req, res) => {
     if (!result.rows[0]) return res.status(404).json({ error: 'Meeting not found' })
     res.json(result.rows[0])
   } catch (err) {
+    console.error('[meetings] error:', err)
     res.status(500).json({ error: 'Failed to fetch meeting' })
   }
 })
@@ -72,6 +74,7 @@ router.post('/', verifyToken, requirePMOrAbove, async (req, res) => {
     }
     res.status(201).json(meeting)
   } catch (err) {
+    console.error('[meetings] error:', err)
     res.status(500).json({ error: 'Failed to create meeting' })
   }
 })
@@ -90,6 +93,7 @@ router.put('/:id', verifyToken, requirePMOrAbove, async (req, res) => {
     await auditLog({ workspaceId: req.user.workspaceId, userId: req.user.id, userName: req.user.fullName, action: 'update', entityType: 'meeting', entityId: req.params.id, entityName: title })
     res.json(result.rows[0])
   } catch (err) {
+    console.error('[meetings] error:', err)
     res.status(500).json({ error: 'Failed to update meeting' })
   }
 })
@@ -103,6 +107,7 @@ router.delete('/:id', verifyToken, requireSuperAdmin, async (req, res) => {
     await auditLog({ workspaceId: req.user.workspaceId, userId: req.user.id, userName: req.user.fullName, action: 'delete', entityType: 'meeting', entityId: req.params.id, entityName: mtg.rows[0].title })
     res.json({ message: 'Meeting deleted' })
   } catch (err) {
+    console.error('[meetings] error:', err)
     res.status(500).json({ error: 'Failed to delete meeting' })
   }
 })

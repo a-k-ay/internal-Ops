@@ -39,6 +39,7 @@ router.get('/', verifyToken, async (req, res) => {
     const result = await query(q, params)
     res.json(result.rows)
   } catch (err) {
+    console.error('[clients] error:', err)
     res.status(500).json({ error: 'Failed to fetch clients' })
   }
 })
@@ -55,6 +56,7 @@ router.get('/:id', verifyToken, async (req, res) => {
     if (!result.rows[0]) return res.status(404).json({ error: 'Client not found' })
     res.json(result.rows[0])
   } catch (err) {
+    console.error('[clients] error:', err)
     res.status(500).json({ error: 'Failed to fetch client' })
   }
 })
@@ -74,6 +76,7 @@ router.post('/', verifyToken, requirePMOrAbove, async (req, res) => {
     await auditLog({ workspaceId: req.user.workspaceId, userId: req.user.id, userName: req.user.fullName, action: 'create', entityType: 'client', entityId: client.id, entityName: client.name })
     res.status(201).json(client)
   } catch (err) {
+    console.error('[clients] error:', err)
     res.status(500).json({ error: 'Failed to create client' })
   }
 })
@@ -92,6 +95,7 @@ router.put('/:id', verifyToken, requirePMOrAbove, async (req, res) => {
     await auditLog({ workspaceId: req.user.workspaceId, userId: req.user.id, userName: req.user.fullName, action: 'update', entityType: 'client', entityId: req.params.id, entityName: name })
     res.json(result.rows[0])
   } catch (err) {
+    console.error('[clients] error:', err)
     res.status(500).json({ error: 'Failed to update client' })
   }
 })
@@ -108,6 +112,7 @@ router.put('/:id/archive', verifyToken, requireSuperAdmin, async (req, res) => {
     await auditLog({ workspaceId: req.user.workspaceId, userId: req.user.id, userName: req.user.fullName, action: 'archive', entityType: 'client', entityId: req.params.id, entityName: result.rows[0].name })
     res.json(result.rows[0])
   } catch (err) {
+    console.error('[clients] error:', err)
     res.status(500).json({ error: 'Failed to archive client' })
   }
 })
@@ -124,6 +129,7 @@ router.put('/:id/restore', verifyToken, requireSuperAdmin, async (req, res) => {
     await auditLog({ workspaceId: req.user.workspaceId, userId: req.user.id, userName: req.user.fullName, action: 'restore', entityType: 'client', entityId: req.params.id, entityName: result.rows[0].name })
     res.json(result.rows[0])
   } catch (err) {
+    console.error('[clients] error:', err)
     res.status(500).json({ error: 'Failed to restore client' })
   }
 })
@@ -137,6 +143,7 @@ router.delete('/:id', verifyToken, requireSuperAdmin, async (req, res) => {
     await auditLog({ workspaceId: req.user.workspaceId, userId: req.user.id, userName: req.user.fullName, action: 'delete', entityType: 'client', entityId: req.params.id, entityName: client.rows[0].name })
     res.json({ message: 'Client deleted' })
   } catch (err) {
+    console.error('[clients] error:', err)
     res.status(500).json({ error: 'Failed to delete client' })
   }
 })

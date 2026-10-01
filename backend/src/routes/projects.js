@@ -41,6 +41,7 @@ router.get('/', verifyToken, async (req, res) => {
     const result = await query(q, params)
     res.json(result.rows)
   } catch (err) {
+    console.error('[projects] error:', err)
     res.status(500).json({ error: 'Failed to fetch projects' })
   }
 })
@@ -57,6 +58,7 @@ router.get('/:id', verifyToken, async (req, res) => {
     if (!result.rows[0]) return res.status(404).json({ error: 'Project not found' })
     res.json(result.rows[0])
   } catch (err) {
+    console.error('[projects] error:', err)
     res.status(500).json({ error: 'Failed to fetch project' })
   }
 })
@@ -76,6 +78,7 @@ router.post('/', verifyToken, requirePMOrAbove, async (req, res) => {
     await auditLog({ workspaceId: req.user.workspaceId, userId: req.user.id, userName: req.user.fullName, action: 'create', entityType: 'project', entityId: project.id, entityName: project.name })
     res.status(201).json(project)
   } catch (err) {
+    console.error('[projects] error:', err)
     res.status(500).json({ error: 'Failed to create project' })
   }
 })
@@ -93,6 +96,7 @@ router.put('/:id', verifyToken, requirePMOrAbove, async (req, res) => {
     await auditLog({ workspaceId: req.user.workspaceId, userId: req.user.id, userName: req.user.fullName, action: 'update', entityType: 'project', entityId: req.params.id, entityName: name })
     res.json(result.rows[0])
   } catch (err) {
+    console.error('[projects] error:', err)
     res.status(500).json({ error: 'Failed to update project' })
   }
 })

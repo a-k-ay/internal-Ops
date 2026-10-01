@@ -15,6 +15,7 @@ router.get('/', verifyToken, requirePMOrAbove, async (req, res) => {
     )
     res.json(result.rows)
   } catch (err) {
+    console.error('[users] error:', err)
     res.status(500).json({ error: 'Failed to fetch users' })
   }
 })
@@ -70,6 +71,7 @@ router.put('/profile/me', verifyToken, async (req, res) => {
     }
     res.json({ message: 'Profile updated successfully' })
   } catch (err) {
+    console.error('[users] error:', err)
     res.status(500).json({ error: 'Failed to update profile' })
   }
 })
@@ -127,6 +129,7 @@ router.put('/:id/toggle-active', verifyToken, requireSuperAdmin, async (req, res
     if (!result.rows[0]) return res.status(404).json({ error: 'User not found' })
     res.json(result.rows[0])
   } catch (err) {
+    console.error('[users] error:', err)
     res.status(500).json({ error: 'Failed to toggle user status' })
   }
 })
