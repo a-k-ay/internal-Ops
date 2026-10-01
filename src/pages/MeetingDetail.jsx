@@ -10,8 +10,6 @@ import Spinner from '../components/Spinner'
 import EmptyState from '../components/EmptyState'
 import Badge from '../components/Badge'
 import { format, parseISO, isPast } from 'date-fns'
-import { jsPDF } from 'jspdf'
-import autoTable from 'jspdf-autotable'
 
 const EMPTY_ACTION = { title: '', assignedTo: '', assignedToName: '', dueDate: '' }
 
@@ -171,8 +169,19 @@ export default function MeetingDetail() {
     setAiLoading(false)
   }
 
-  // PDF Export
-  const exportPDF = () => {
+  // PDF Export — jspdf + jspdf-autotable are ~500 KB combined; lazy-loaded
+  // on first click so they don't inflate the initial bundle.
+  const exportPDF = async () => {
+    let jsPDF, autoTable
+    try {
+      ;({ jsPDF } = await import('jspdf'))
+      ;({ default: autoTable } = await import('jspdf-autotable'))
+    } catch (err) {
+      console.error('[MeetingDetail.exportPDF load]', err)
+      toast.error('Could not load PDF exporter')
+      return
+    }
+
     // Replace Unicode chars that WinAnsi Helvetica can't render (else jsPDF outputs one letter per line).
     const sanitize = (t) => {
       if (t == null) return ''

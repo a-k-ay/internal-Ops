@@ -10,7 +10,6 @@ import Spinner from '../components/Spinner'
 import EmptyState from '../components/EmptyState'
 import Badge from '../components/Badge'
 import { format, parseISO } from 'date-fns'
-import * as XLSX from 'xlsx-js-style'
 
 const EMPTY_FORM = { description: '', classification: 'issue', status: 'pending', raisedDate: format(new Date(), 'yyyy-MM-dd'), devStartDate: '', deployedDate: '', raisedBy: '', remarks: '' }
 
@@ -142,7 +141,17 @@ export default function Tracker() {
       (!toDate || (i.raised_date && i.raised_date <= toDate))
   })
 
-  const exportExcel = () => {
+  // xlsx-js-style is ~900 KB; lazy-loaded on first Export click.
+  const exportExcel = async () => {
+    let XLSX
+    try {
+      XLSX = await import('xlsx-js-style')
+    } catch (err) {
+      console.error('[Tracker.exportExcel load]', err)
+      toast.error('Could not load Excel exporter')
+      return
+    }
+
     const rows = filtered.map((i, idx) => ({
       'S No': idx + 1,
       'Description': i.description,
