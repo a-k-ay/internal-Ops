@@ -1,4 +1,11 @@
-const BASE_URL = '/api'
+// In dev we proxy /api via vite.config.js, so leaving BASE_URL as '/api'
+// keeps requests same-origin and avoids CORS. In production the frontend
+// is served from a different host (e.g. Vercel) than the API, so set
+// VITE_API_URL at build time to the full API origin (e.g.
+// 'https://meeting-action-board-api.onrender.com'). We strip a trailing
+// slash so callers can keep writing `${BASE_URL}/clients` either way.
+const RAW = import.meta.env.VITE_API_URL || ''
+const BASE_URL = (RAW ? RAW.replace(/\/$/, '') : '') + '/api'
 
 const getToken = () => {
   try { return JSON.parse(sessionStorage.getItem('mab_auth') || '{}').token || null }
