@@ -6,9 +6,8 @@ An internal operations tool for small services teams: capture meeting
 minutes, extract action items, and track the work that comes out of them
 in one place instead of across chat threads, email, and separate docs.
 
-Built for a real team that was losing track of change requests between
-WhatsApp, email, and Google Docs. Tested with that team before writing
-this README.
+Inspired by a recurring problem from my business analyst work: change
+requests getting lost between WhatsApp, email, and Google Docs.
 
 ## Problem
 
